@@ -1,11 +1,6 @@
 
 # Yeti: a Yorick extension
 
-# by Éric Thiébaut
-
-# version 6.4.0, May 2015
-
-
 Description
 ===========
 
