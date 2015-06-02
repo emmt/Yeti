@@ -1,0 +1,101 @@
+/*
+ * config.h -
+ *
+ * Configuration settings for compiling Yeti and others Yorick extensions.
+ *
+ *-----------------------------------------------------------------------------
+ *
+ * Copyright (C) 1996-2010 Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ *
+ * This software is governed by the CeCILL-C license under French law and
+ * abiding by the rules of distribution of free software.  You can use, modify
+ * and/or redistribute the software under the terms of the CeCILL-C license as
+ * circulated by CEA, CNRS and INRIA at the following URL
+ * "http://www.cecill.info".
+ *
+ * As a counterpart to the access to the source code and rights to copy,
+ * modify and redistribute granted by the license, users are provided only
+ * with a limited warranty and the software's author, the holder of the
+ * economic rights, and the successive licensors have only limited liability.
+ *
+ * In this respect, the user's attention is drawn to the risks associated with
+ * loading, using, modifying and/or developing or reproducing the software by
+ * the user in light of its specific status of free software, that may mean
+ * that it is complicated to manipulate, and that also therefore means that it
+ * is reserved for developers and experienced professionals having in-depth
+ * computer knowledge. Users are therefore encouraged to load and test the
+ * software's suitability as regards their requirements in conditions enabling
+ * the security of their systems and/or data to be ensured and, more
+ * generally, to use and operate it in the same conditions as regards
+ * security.
+ *
+ * The fact that you are presently reading this means that you have had
+ * knowledge of the CeCILL-C license and that you accept its terms.
+ *
+ *-----------------------------------------------------------------------------
+ *
+ * $Id$
+ * $Log$
+ */
+
+#ifndef _YETI_CONFIG_H
+#define _YETI_CONFIG_H 1
+
+/*---------------------------------------------------------------------------*/
+/* Yorick version numbers: */
+#define YORICK_VERSION_MAJOR x
+#define YORICK_VERSION_MINOR x
+#define YORICK_VERSION_MICRO x
+#define YORICK_VERSION_SUFFIX ""
+
+/* Yeti version numbers: */
+#define YETI_VERSION_MAJOR x
+#define YETI_VERSION_MINOR x
+#define YETI_VERSION_MICRO x
+#define YETI_VERSION_SUFFIX ""
+
+/* Define the following macro to true if Yorick does not export
+   the definitions of autoload_t structure: */
+#define YETI_MUST_DEFINE_AUTOLOAD_TYPE x
+
+/*---------------------------------------------------------------------------*/
+/* Byte order (+1 for big endian, -1 for little endian). */
+#define YETI_BYTE_ORDER x
+
+/* Size (in bytes) of basic C-types. */
+#define YETI_CHAR_SIZE x
+#define YETI_SHORT_SIZE x
+#define YETI_INT_SIZE x
+#define YETI_LONG_SIZE x
+#define YETI_FLOAT_SIZE x
+#define YETI_DOUBLE_SIZE x
+#define YETI_POINTER_SIZE x
+
+/*---------------------------------------------------------------------------*/
+/* Unfortunately the code interface to Yorick change with the version and
+   none of the Yorick headers provide this information.  The following
+   defintions attempt to provide a more uniform interface. */
+
+#undef p_strfree
+#if (YORICK_VERSION_MAJOR == 1 && YORICK_VERSION_MINOR == 4)
+# include "defstr.h"
+# define p_malloc   Ymalloc  /* usage: p_malloc(SIZE)        */
+# define p_realloc  Yrealloc /* usage: p_realloc(ADDR, SIZE) */
+# define p_free     Yfree    /* usage: p_free(ADDR)          */
+# define p_strcpy   StrCpy   /* usage: p_strcpy(STR) -- also see yeti_strcpy */
+# define p_strfree  StrFree  /* usage: p_strfree(STR) */
+# define p_stralloc StrAlloc /* usage: p_stralloc(LEN) */
+#endif /* Yorick 1.4 */
+
+#if ((YORICK_VERSION_MAJOR == 1 && YORICK_VERSION_MINOR >= 5) || YORICK_VERSION_MAJOR >= 2)
+# include "pstdlib.h"
+# define p_strfree       p_free            /* usage: p_strfree(STR) */
+# define p_stralloc(LEN) p_malloc((LEN)+1) /* usage: p_stralloc(LEN) */
+#endif /* Yorick 1.5 and newer */
+
+#ifndef p_stralloc
+# error "unsupported Yorick version"
+#endif
+
+/*---------------------------------------------------------------------------*/
+#endif /* _YETI_CONFIG_H */

@@ -1,0 +1,60 @@
+NOTATIONS
+---------
+[ ] means "to do"
+[-] means "abandoned" (i.e. it was a bad idea or found another way to solve
+    for that)
+[+] means "done"
+
+
+YETI
+----
+[ ] use GIT instead of RCS;
+[ ] autoload yhd_save, yhd_restore, etc.;
+[ ] add support for sparse matrix in YHD files;
+[ ] make a h_save and h_restore functions:
+    h_save, tab, var1, var2, ...; // saves variables as members of tab
+    same as: h_set, tab, var1=var1, var2=var2, ...;
+    tab = h_save(var1, var2, ...); // creates new hash-table with members
+    same as: tab = h_new(var1=var1, var2=var2, ...);
+    h_restore, tab; // restore all members in current context
+    h_restore, tab, var1, var2, ...; // restore some members
+[-] make Yeti 'relocatable' like Yorick (now Yeti is a regular plugin of
+    Yorick)
+[ ] write a widget/plotter server (with Tcl/Tk or Gtk)
+[+] make Yeti as a plugin for Yorick 1.6
+[+] implement (re)loadable plugins
+[ ] use Yeti stack managed workspace in yeti_regex.c
+[ ] give up compatibility with Yorick-1.4
+[ ] cleanup yeti_strcpy, yeti_strncpy in yeti_utils.c -- provide a p_strncpy
+    which is missing in Yorick's Play library, in fact:
+    #define p_strncpy(s,n) p_strncat((char *)0, (s), (n))
+    would do the trick
+[ ] implement binary data conversion in yeti_channel.c
+
+
+INTERNALS OF YORICK
+-------------------
+[-] Modify FreeBIFunction() in ydata.c so that freeing builtin function
+    becomes impossible.
+[-] Patch the list object code to avoid loop in references.
+[-] Have some mean to avoid warning messages when freeing builtin functions
+    (which sucks when a plugin get reloaded).
+
+
+HASH OBJECTS
+------------
+[ ] h_cpy() to effectively duplicate a hash table object.
+[ ] There is maybe a possibility to extend the cases where member
+    assignation is allowed (OBJ.MEMBER = VALUE should behave as
+    h_set, OBJ, MEMBER=VALUE).
+[ ] cleanup hash-table code (remove/change h_copy/h_clone functions
+    and make the 'ydf' format available in yeti_hash.i)
+[ ] no needs(?) for 'ReplaceRef' in hash table code
+
+
+INTERFACE TO YORICK INTERNALS
+-----------------------------
+[ ] remove suffix _base in all yeti_push_new..._base and remove
+    corresponding macros that return a DataBlock (if you really want the
+    address of the new DataBlock you can just take the value of the topmost
+    stack synbol)

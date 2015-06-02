@@ -1,0 +1,11 @@
+This directory contains the source files needed for Yeti regular expression
+plugin.
+
+If the POSIX regular expression library is not installed in your system,
+I've put a copy og GLIBC regular expression routines in directory glibc.
+These files rae almost unmodified from their original version (I've left
+the original files with a .orig suffix so that you can figure out what I
+had to modify).  You can get the full source code of GLIBC at
+
+   ftp://ftp.gnu.org/pub/gnu/glibc
+

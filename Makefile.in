@@ -1,0 +1,108 @@
+#
+# Makefile -
+#
+# Top-level Makefile for Yeti package and plugins.
+#
+#------------------------------------------------------------------------------
+
+# These values filled in by: yorick -batch make.i
+Y_MAKEDIR=
+Y_EXE=
+Y_EXE_PKGS=
+Y_EXE_HOME=
+Y_EXE_SITE=
+
+#---------------------------------------------------------- configuration flags
+
+# These values filled in by: yorick -batch config.i
+YETI_PKGS = core fftw regex tiff
+YETI_VERSION_MAJOR = x
+YETI_VERSION_MINOR = x
+YETI_VERSION_MICRO = x
+YETI_VERSION_SUFFIX = ""
+YORICK_VERSION_MAJOR = x
+YORICK_VERSION_MINOR = x
+YORICK_VERSION_MICRO = x
+YORICK_VERSION_SUFFIX = ""
+
+SUBDIRS = $(YETI_PKGS) doc
+
+TMPDIR=/tmp
+
+DISTRIB_PKGS = core fftw regex tiff
+DISTRIB_DIRS = doc $(DISTRIB_PKGS)
+DISTRIB_FILES = AUTHORS LICENSE.md NEWS README.md VERSION \
+	Makefile Makefile.in configure config.h.in config.i
+
+#------------------------------------------------------------------------------
+
+default: all
+
+all: check
+	@for dir in $(SUBDIRS); do \
+	  (cd $$dir; make); \
+	done
+
+check:
+	@if test -z "$(YETI_PKGS)" -o ! -r config.h ; then \
+	  echo "***************************************************************"; \
+	  echo "  Before building Yeti, you must run the configuration script."; \
+	  echo "  This is achieved by a command like:"; \
+	  echo "      yorick -batch ./config.i [...]"; \
+	  echo ""; \
+	  echo "  See README.md file for detailled instructions.  For a summary"; \
+	  echo "  of configuration options, you can also try:"; \
+	  echo "      yorick -batch ./config.i --help"; \
+	  echo "***************************************************************"; \
+	  false; \
+	else \
+	  true; \
+	fi
+
+install: check
+	@for dir in $(SUBDIRS); do \
+	  (cd $$dir; make $@); \
+	done
+#	@for src in AUTHORS COPYING NEWS README.md LICENSE.md VERSION; do \
+#	  dst=$(Y_EXE_SITE)/doc/$$src.yeti; \
+#	  cp -pf $$src $$dst; \
+#	  chmod 644 $$dst; \
+#	done
+
+clean: check
+	rm -f *~ *.tmp
+	@for dir in $(SUBDIRS); do \
+	  (cd $$dir; make $@); \
+	done
+
+distclean: clean
+	rm -f config.h Makefile
+
+distrib:
+	@version=`cat VERSION`; \
+	target="yeti-$${version}"; \
+	tmpdir="$(TMPDIR)/$${target}"; \
+	archive="$${tmpdir}.tar.bz2"; \
+	if test -d "$${tmpdir}"; then \
+	  echo "directory $${tmpdir} already exists"; \
+	  false; \
+	else \
+	  olddir=`pwd`; \
+	  mkdir -p "$${tmpdir}"; \
+	  for file in $(DISTRIB_FILES); do \
+	    cp -a "$${file}" "$${tmpdir}/$${file}"; \
+	  done; \
+	  for dir in $(DISTRIB_DIRS); do \
+	    cp -a "$${dir}" "$${tmpdir}/$${dir}"; \
+	  done; \
+	  cd "$${tmpdir}"; \
+	  touch config.h; \
+	  make clean YETI_PKGS="$(DISTRIB_PKGS)"; \
+	  rm -f config.h; \
+	  rm -rf */RCS */*~; \
+	  cd "$(TMPDIR)"; \
+	  tar cf - "$${target}" | bzip2 -9 > "$${archive}"; \
+	  cd "$${olddir}"; \
+	  rm -rf "$${tmpdir}"; \
+	  echo "archive is: $${archive}"; \
+	fi

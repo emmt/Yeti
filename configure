@@ -1,0 +1,53 @@
+#! /bin/sh
+#
+# Wrapper script around "yorick -batch config.i"
+
+dir=`dirname "$0"`
+config_i="$dir/config.i"
+if test ! -f "$config_i" -o ! -r "$config_i"; then
+  echo >&2 "File \"config.i\" not found."
+  echo >&2 "Maybe Yeti distribution not properly unpacked."
+  exit 1
+fi
+
+yorick=
+n=1
+while test $n -le $#; do
+  eval arg=\$$n
+  case "$arg" in
+    --yorick=*)
+      yorick=`echo "$arg" | sed 's/^--yorick=//'`
+      ;;
+  esac
+  n=`expr $n + 1`
+done
+
+# Search Yorick in the path:
+if test "x$yorick" = "x"; then
+  exe_sfx=
+  save_IFS=$IFS
+  IFS=":"
+  for dir in $PATH; do
+    file=$dir/yorick$exe_sfx
+    if test -f "$file" -a -x "$file"; then
+      yorick=$file
+      break
+    fi
+  done
+  IFS=$save_IFS
+fi
+if test "x$yorick" = "x" -o ! -f "$yorick" -o ! -x "$yorick"; then
+  echo >&2 "Yorick excutable not found."
+  echo >&2 "Try to specify the path with option --yorick=..."
+  exit 1
+fi
+exec "$yorick" -batch "$config_i" "$@"
+
+# Local Variables:
+# mode: sh
+# tab-width: 8
+# c-basic-offset: 2
+# indent-tabs-mode: nil
+# fill-column: 78
+# coding: utf-8
+# End:
