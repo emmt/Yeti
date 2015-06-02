@@ -1,9 +1,6 @@
 
 # Yeti: a Yorick extension
 
-Description
-===========
-
 Yeti is an extension of Yorick (a fast interpreted interactive data processing
 language written by David Munro) which implements (see "*Quick Reference*" below
 for a list of additional functions):
@@ -29,8 +26,7 @@ whether corresponding directories exist or not):
  * `yeti_tiff` ..... support for reading TIFF images
 
 
-Compilation and Installation
-============================
+## Compilation and Installation
 
 Starting with version 6.0.0, Yeti is built as a regular Yorick plugin and some
 of the Yeti extensions are built as standalone Yorick plugins (they do not
@@ -97,8 +93,7 @@ Note that the `configure` script is actually a wrapper around the command:
 with [...] the arguments passed to `configure`.
 
 
-Quick Reference
-===============
+## Quick Reference
 
     h_cleanup ............ delete void members of hash table object
     h_clone .............. clone a hash table
@@ -246,8 +241,7 @@ FFTW:
     fftw_convolve ......... fast convolution of two arrays
 
 
-Copyright and Warranty
-======================
+## Copyright and Warranty
 
 (See file [LICENSE](./LICENSE.md) for details.)
 
@@ -278,8 +272,7 @@ Copyright and Warranty
 > of the CeCILL-C license and that you accept its terms.
 
 
-References and notes
-====================
+## References and notes
 
 1. [Yorick](http://github.com/dhmunro/yorick) is an interpreted programming
    language for scientific simulations or calculations, postprocessing or
