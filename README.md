@@ -8,7 +8,7 @@ for a list of additional functions):
  * regular expressions
  * complex, real-complex and complex-real FFT by FFTW (the Fastest Fourier
    Transform in the West -- version 2)
- * wavelet filtering ("à trou" method)
+ * wavelet filtering ("*à trou*" method)
  * fast convolution along a chosen dimension with various border conditions
  * more string functions
  * memory hacking routines
@@ -21,9 +21,9 @@ for a list of additional functions):
 
 This distribution of Yeti may come with several extensions (depending
 whether corresponding directories exist or not):
- * `yeti_fftw` ..... support for FFTW
- * `yeti_regex` .... support for POSIX regular expressions
- * `yeti_tiff` ..... support for reading TIFF images
+ * `fftw` ..... support for FFTW
+ * `regex` .... support for POSIX regular expressions
+ * `tiff` ..... support for reading TIFF images
 
 
 ## Compilation and Installation
