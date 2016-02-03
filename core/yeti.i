@@ -2303,42 +2303,59 @@ func mem_clear(_____s_____, _____f_____)
   }
 }
 
-func fullsizeof(x)
-/* DOCUMENT fullsizeof(x)
-     Returns size in bytes of object X.  Similar to sizeof (which see)
-     function but also works for lists, arrays of pointers, or hash
-     tables.
+func fullsizeof(obj)
+/* DOCUMENT fullsizeof(obj)
+     Returns size in bytes of object OBJ.  Similar to sizeof (which see)
+     function but also works for lists, arrays of pointers, structures
+     or hash tables.
 
    SEE ALSO: sizeof, is_list, is_array, is_hash.
  */
 {
-  if (is_array(x)) {
-    if (structof(x) == pointer) {
-      s = 0;
-      for (k = numberof(x); k >= 1; --k) {
-        s += fullsizeof(*x(k));
+  size = sizeof(obj);
+  id = identof(obj);
+  if (id > Y_COMPLEX) {
+    if (id <= Y_STRUCT) {
+      if (id == Y_STRING) {
+        size += numberof(obj) + sum(strlen(obj));
+      } else if (id == Y_POINTER) {
+        n = numberof(obj);
+        for (i = 1; i <= n; ++i) {
+          size += fullsizeof(*obj(i));
+        }
+      } else if (id == Y_STRUCT) {
+        /* For each member name, get the size of the member.  TMP is a
+           single element structure of the same type for fast checking the
+           type of each member. */
+        tmp = array(structof(obj));
+        str = sum(print(structof(obj)));
+        sub = [1,2];
+        reg = "^ *[A-Z_a-z][0-9A-Z_a-z]* +([A-Z_a-z][0-9A-Z_a-z]*)[^;]*;(.*)";
+        str = strpart(str, strgrep("^struct +([^ ]+) +{(.*)", str, sub=sub));
+        for (;;) {
+          str = str(2);
+          str = strpart(str, strgrep(reg, str, sub=sub));
+          name = str(1);
+          if (! name) {
+            break;
+          }
+          if (identof(get_member(tmp, name)) > Y_COMPLEX) {
+            size += fullsizeof(get_member(obj, name));
+          }
+        }
       }
-      return s;
-    } else {
-      return sizeof(x);
+    } else if (is_hash(obj)) {
+      for (key = h_first(obj); key; key = h_next(obj, key)) {
+        size += fullsizeof(h_get(obj, key));
+      }
+    } else if (is_list(obj)) {
+      while (obj) {
+        size += fullsizeof(_car(obj));
+        obj = _cdr(obj);
+      }
     }
   }
-  if (is_hash(x)) {
-    s = 0;
-    for (k = h_first(x); k; k = h_next(x, k)) {
-      s += fullsizeof(h_get(x, k));
-    }
-    return s;
-  }
-  if (is_list(x)) {
-    s = 0;
-    while (x) {
-      s += fullsizeof(_car(x));
-      x = _cdr(x);
-    }
-    return s;
-  }
-  return sizeof(x);
+  return size;
 }
 
 extern insure_temporary;
@@ -2346,6 +2363,11 @@ extern insure_temporary;
      Insure that symbols VAR1 (VAR2 ...) are temporary variables referring to
      arrays.  Useful prior to in-place operations to avoid side-effects for
      caller.
+
+     The call:
+         insure_temporary, var;
+     has the same effect as:
+         var = unref(var);
 
    SEE ALSO: eq_nocopy, nrefsof, swap, unref. */
 
