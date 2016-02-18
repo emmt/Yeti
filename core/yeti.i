@@ -167,16 +167,16 @@ func setup_package(plugname)
 func anonymous(args, code)
 /* DOCUMENT f = anonymous(args, code);
 
-     Make an anonymous  function with ARGS its argument list  and CODE the body
-     of the function.  ARGS and CODE must be scalar strings.
+     Make an anonymous function with ARGS its argument list and CODE the body
+     of the function.  ARGS and CODE must be (array of) strings.
 
      For instance:
 
        f1 = anonymous("x", "c = x*x; return sqrt(c + abs(x));");
        f2 = anonymous("x,y", "return cos(x*y + abs(x));");
 
-     define  two functions  f1  and  f2 which  take  respectively  one and  two
-     arguments.   When variables  f1  and  f2 get  out  of  scope the  function
+     define two functions f1 and f2 which take respectively one and two
+     arguments.  When variables f1 and f2 get out of scope the function
      definition is automatically deleted.
 
      Other example:
@@ -189,8 +189,9 @@ func anonymous(args, code)
    SEE ALSO: map, include, funcdef, h_functor, closure.
  */
 {
-  include, ["func __anonymous__(" + args + "){" + code + "}"], 1;
-  return __anonymous__;
+  local __lambda__;
+  include, grow("func __lambda__(", args, ") { ", code, " }"), 1;
+  return __lambda__;
 }
 
 /*---------------------------------------------------------------------------*/
