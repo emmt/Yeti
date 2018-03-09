@@ -31,7 +31,7 @@ TMPDIR=/tmp
 
 DISTRIB_PKGS = core fftw regex tiff
 DISTRIB_DIRS = doc $(DISTRIB_PKGS)
-DISTRIB_FILES = AUTHORS LICENSE.md NEWS README.md VERSION \
+DISTRIB_FILES = AUTHORS LICENSE.md NEWS.md README.md VERSION \
 	Makefile Makefile.in configure config.h.in config.i
 
 #------------------------------------------------------------------------------

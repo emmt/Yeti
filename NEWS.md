@@ -1,3 +1,9 @@
+## 2018-03-09: Yeti version 6.4.1 released.
+* Add autostart file and logo.
+* Improve `anonymous` to have no side effects.
+* `fullsizeof` can now cope with structures.
+* Cleanup and convert NEWS to [Markdown](https://en.wikipedia.org/wiki/Markdown).
+
 ## 2015-06-02: Yeti version 6.4.0 released.
 * Yeti is managed as a Git repository on [GitHub](https://github.com/emmt/Yeti).
 * GSL support abandoned (use [YGSL](https://github.com/emmt/gsl) plugin instead).
