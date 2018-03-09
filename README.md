@@ -1,5 +1,5 @@
 
-# Yeti: a Yorick extension
+# Yeti: a Yorick extension ![Yeti-logo](doc/yeti.png)
 
 Yeti is an extension of Yorick (a fast interpreted interactive data processing
 language written by David Munro) which implements (see "*Quick Reference*" below
