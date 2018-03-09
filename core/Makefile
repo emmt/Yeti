@@ -33,6 +33,9 @@
 # knowledge of the CeCILL-C license and that you accept its terms.
 #------------------------------------------------------------------------------
 
+# where are the sources?
+srcdir=.
+
 # these values filled in by: yorick -batch make.i
 Y_MAKEDIR=
 Y_EXE=
@@ -50,7 +53,7 @@ TGT=$(DEFAULT_TGT)
 #------------------------------------------------------ macros for this package
 
 PKG_NAME=yeti
-PKG_I=yeti.i
+PKG_I=$(srcdir)/yeti.i
 
 OBJS = yeti_convolve.o \
        yeti_cost.o \
@@ -82,9 +85,9 @@ EXTRA_PKGS=$(Y_EXE_PKGS)
 PKG_CLEAN=$(PKG_NAME)$(PLUG_SFX) $(PKG_NAME).dll $(PKG_NAME).so
 
 # autoload file for this package, if any
-PKG_I_START=
+PKG_I_START=$(srcdir)/yeti-start.i
 # non-pkg.i include files for this package, if any
-PKG_I_EXTRA=yeti_yhdf.i
+PKG_I_EXTRA=$(srcdir)/yeti_yhdf.i
 
 #-------------------------------------- standard targets and rules (in Makepkg)
 

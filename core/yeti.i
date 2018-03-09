@@ -2625,10 +2625,3 @@ func make_hermitian(z, half=, method=, debug=)
   }
   return z;
 }
-
-/*---------------------------------------------------------------------------*/
-
-/* Manage to autoload other parts of Yeti package. */
-if (! is_func(yhd_save)) {
-  autoload, "yeti_yhdf.i", yhd_save, yhd_restore, yhd_check, yhd_info;
-}
