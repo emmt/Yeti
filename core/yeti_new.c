@@ -306,14 +306,3 @@ static long CHECK_DIMS(const void *array, const long dims[])
 #undef CHECK_DIMS
 
 #endif /* _YETI_NEW_C ********************************************************/
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

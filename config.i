@@ -499,14 +499,3 @@ if (batch()) {
   cfg_configure, get_argv();
   quit;
 }
-
-/*
- * Local Variables:
- * mode: Yorick
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

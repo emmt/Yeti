@@ -779,14 +779,3 @@ static void smooth_single(double *x, double p25, double p50, double p75,
     }
   }
 }
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

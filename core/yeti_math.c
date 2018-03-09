@@ -257,14 +257,3 @@ void Y_arc(int nArgs)
   }
   Drop(1);
 }
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

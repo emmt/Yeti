@@ -434,14 +434,3 @@ static double cost_l2l0(const double hyper[],
 
   return mu*result;
 }
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

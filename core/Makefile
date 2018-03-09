@@ -128,12 +128,3 @@ yeti_rgl.o: yeti_rgl.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DYORICK -o $@ -c $<
 yeti_utils.o: yeti.h ../config.h
 #yeti_new.o:
-
-#
-# Local Variables:
-# mode: Makefile
-# tab-width: 8
-# fill-column: 78
-# coding: utf-8
-# End:
-#-------------------------------------------------------------- end of Makefile

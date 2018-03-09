@@ -435,14 +435,3 @@ static void MORPH_EROSION _(<)
 #undef voxel_t
 
 #endif /* _YETI_MORPH_C -----------------------------------------------------*/
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

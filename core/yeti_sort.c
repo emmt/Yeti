@@ -429,14 +429,3 @@ static value_t QUICKSELECT(long k, long n, value_t arr[])
 #undef value_t
 
 #endif /* _YETI_SORT_C */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

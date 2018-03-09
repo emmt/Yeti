@@ -783,14 +783,3 @@ double RGL_ROUGHNESS(const double hyper[],  /* hyper-parameters */
 #undef RGL_ROUGHNESS
 
 #endif /* _RGL_CODE */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

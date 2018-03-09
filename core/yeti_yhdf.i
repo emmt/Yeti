@@ -748,14 +748,3 @@ func __yhd_insert_dim(dimlist, first_dim)
   newlist(2) = first_dim;
   return newlist;
 }
-
-/*
- * Local Variables:
- * mode: Yorick
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

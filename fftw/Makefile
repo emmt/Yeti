@@ -4,6 +4,7 @@ Y_EXE=
 Y_EXE_PKGS=
 Y_EXE_HOME=
 Y_EXE_SITE=
+Y_HOME_PKG=
 
 # ----------------------------------------------------- optimization flags
 
@@ -22,9 +23,9 @@ OBJS=yeti_fftw.o
 PKG_EXENAME=yorick
 
 # PKG_DEPLIBS=-Lsomedir -lsomelib   for dependencies of this package
-PKG_DEPLIBS = -L/home/soft/local/lib -lrfftw -lfftw
+PKG_DEPLIBS =
 # set compiler (or rarely loader) flags specific to this package
-PKG_CFLAGS = -I/home/soft/local/include -DHAVE_FFTW=1
+PKG_CFLAGS = -DHAVE_FFTW=0
 PKG_LDFLAGS=
 
 # list of additional package names you want in PKG_EXENAME

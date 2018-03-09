@@ -2632,14 +2632,3 @@ func make_hermitian(z, half=, method=, debug=)
 if (! is_func(yhd_save)) {
   autoload, "yeti_yhdf.i", yhd_save, yhd_restore, yhd_check, yhd_info;
 }
-
-/*
- * Local Variables:
- * mode: Yorick
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * End:
- */

@@ -241,14 +241,3 @@ func fftw_convolve(orig, psf, do_not_roll, fp=, bp=)
            (is_void(bp) ? fftw_plan(dims, -1, real=real) : bp));
   return (1.0/numberof(p))*p;
 }
-
-/*
- * Local Variables:
- * mode: Yorick
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * End:
- */

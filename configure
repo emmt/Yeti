@@ -42,12 +42,3 @@ if test "x$yorick" = "x" -o ! -f "$yorick" -o ! -x "$yorick"; then
   exit 1
 fi
 exec "$yorick" -batch "$config_i" "$@"
-
-# Local Variables:
-# mode: sh
-# tab-width: 8
-# c-basic-offset: 2
-# indent-tabs-mode: nil
-# fill-column: 78
-# coding: utf-8
-# End:

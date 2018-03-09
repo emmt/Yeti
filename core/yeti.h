@@ -401,14 +401,3 @@ extern yeti_opaque_t *yeti_get_opaque(Symbol *stack,
 /*---------------------------------------------------------------------------*/
 _YETI_END_DECLS
 #endif /* _YETI_H */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

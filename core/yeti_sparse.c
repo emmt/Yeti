@@ -705,14 +705,3 @@ static size_t pack_dimlist(const Dimension *dims, size_t dimlist[],
   }
   return n;
 }
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 78
- * coding: utf-8
- * End:
- */

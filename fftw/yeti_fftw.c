@@ -538,14 +538,3 @@ void Y_fftw(int nargs) { YError(no_fftw_support); }
 void Y_fftw_plan(int nargs) { YError(no_fftw_support); }
 
 #endif /* not HAVE_FFTW */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * End:
- */

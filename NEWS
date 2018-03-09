@@ -405,12 +405,3 @@
 
  * 2004-02-23: Added built-in function "eigen" to compute the spectral
         decomposition of real symetric matrices.
-
-===============================================================================
-= Local Variables:                                                            =
-= mode: text                                                                  =
-= tab-width: 8                                                                =
-= fill-column: 79                                                             =
-= coding: utf-8                                                               =
-= End:                                                                        =
-===============================================================================
