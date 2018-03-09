@@ -1,5 +1,7 @@
 
-# Yeti: a Yorick extension ![Yeti-logo](doc/yeti.png)
+# ![Yeti-logo](doc/yeti.png): a Yorick extension
+
+[[News](./NEWS.md)] [[License](./LICENSE.md)]
 
 Yeti is an extension of Yorick (a fast interpreted interactive data processing
 language written by David Munro) which implements (see "*Quick Reference*" below
