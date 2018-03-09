@@ -9,6 +9,10 @@ old/
 #####################
 *~
 
+# Auto-generated doc. #
+#######################
+*.doc
+
 # Compiled sources and libraries #
 ##################################
 *.com
