@@ -6,3 +6,4 @@ AUTHORS    filter=cleanup-text
 NEWS       filter=cleanup-text
 configure  filter=cleanup-text
 Makefile   filter=cleanup-yorick-makefile
+*.png      -diff
