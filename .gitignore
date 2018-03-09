@@ -8,10 +8,14 @@ old/
 # Automatic backups #
 #####################
 *~
+*.bak
 
-# Auto-generated doc. #
-#######################
+# Auto-generated files #
+########################
 *.doc
+/config.h
+/Makefile
+
 
 # Compiled sources and libraries #
 ##################################
