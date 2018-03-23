@@ -78,7 +78,7 @@ extern yeti_init;
 if (batch()) {
   yeti_init;
 } else {
-  write, format=" Yeti %s ready.  Copyright (c) 1996-2009, Eric THIEBAUT.\n",
+  write, format=" Yeti %s ready.  Copyright (c) 1996-2018, Eric THIEBAUT.\n",
     yeti_init();
 }
 
@@ -108,9 +108,9 @@ func setup_package(plugname)
 
   /* Figure out the absolute directory from where we are called. */
   cwd = cd(".");
-  j = where(strchar(path) == '/');
-  if (is_array(j)) {
-    pkgdir = cd(strpart(path, 1:j(0)));
+  j = strfind("/", path, back=1)(2);
+  if (j > 0) {
+    pkgdir = cd(strpart(path, 1:j));
     cd, cwd;
   } else {
     pkgdir = cwd;
