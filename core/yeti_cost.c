@@ -6,7 +6,7 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 1996-2010 Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * Copyright (C) 1996-2018 Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
  *
  * This software is governed by the CeCILL-C license under French law and
  * abiding by the rules of distribution of free software.  You can use, modify
@@ -46,7 +46,7 @@ extern BuiltIn Y_cost_l2l0;
 
 typedef double cost_worker_t(const double hyper[],
                              const double x[], double g[], size_t number,
-                             int kase);
+                             int choice);
 static cost_worker_t cost_l2;
 static cost_worker_t cost_l2l1;
 static cost_worker_t cost_l2l0;
@@ -80,7 +80,7 @@ static void cost_wrapper(int argc, const char *name,
   double *g ;
   Symbol *s;
   long index;
-  int kase, temporary;
+  int choice, temporary;
 
   if (argc < 2 || argc > 3) YError("expecting 2 or 3 arguments");
 
@@ -123,10 +123,10 @@ static void cost_wrapper(int argc, const char *name,
     tneg = x[1];
     tpos = x[2];
   }
-  kase = 0;
-  if (tneg < ZERO) kase |= 1;
+  choice = 0;
+  if (tneg < ZERO) choice |= 1;
   else if (tneg != ZERO) YError("lower threshold must be negative");
-  if (tpos > ZERO) kase |= 2;
+  if (tpos > ZERO) choice |= 2;
   else if (tpos != ZERO) YError("upper threshold must be positive");
 
   /* Get the parameters. */
@@ -153,10 +153,9 @@ static void cost_wrapper(int argc, const char *name,
   }
 
   if (argc == 3) {
-    /* Get the symbol for the gradient. */
-    /* If gradient is required and input array X is a temporary one, re-use
-       X as the output gradient; otherwise, create a new array from scratch
-       for G (see BuildResultU in ops0.c). */
+    /* Get the symbol for the gradient.  If gradient is required and input
+       array X is a temporary one, re-use X as the output gradient; otherwise,
+       create a new array from scratch for G (see BuildResultU in ops0.c). */
     ++s;
     if (s->ops!=&referenceSym)
       YError("needs simple variable reference to store the gradient");
@@ -176,14 +175,14 @@ static void cost_wrapper(int argc, const char *name,
   hyper[0] = mu;
   hyper[1] = tneg;
   hyper[2] = tpos;
-  result = worker(hyper, x, g, number, kase);
+  result = worker(hyper, x, g, number, choice);
   if (index >= 0L) PopTo(&globTab[index]);
   PushDoubleValue(result);
 }
 
 static double cost_l2(const double hyper[],
                       const double x[], double g[], size_t number,
-                      int kase)
+                      int choice)
 {
   double mu, result, gscl, t;
   size_t i;
@@ -191,14 +190,14 @@ static double cost_l2(const double hyper[],
   result = 0.0;
   mu = hyper[0];
   gscl = mu + mu;
-  if (g) {
-    for (i = 0 ; i < number ; ++i) {
+  if (g != NULL) {
+    for (i = 0; i < number; ++i) {
       t = x[i];
       g[i] = gscl*t;
       result += mu*t*t;
     }
   } else {
-    for (i = 0 ; i < number ; ++i) {
+    for (i = 0; i < number; ++i) {
       t = x[i];
       result += mu*t*t;
     }
@@ -208,7 +207,7 @@ static double cost_l2(const double hyper[],
 
 static double cost_l2l1(const double hyper[],
                         const double x[], double g[], size_t number,
-                        int kase)
+                        int choice)
 {
   const double ZERO = 0.0;
   const double ONE = 1.0;
@@ -218,17 +217,17 @@ static double cost_l2l1(const double hyper[],
   result = ZERO;
   mu = hyper[0];
   gscl = mu + mu;
-  switch (kase) {
+  switch (choice) {
   case 0:
     /* L2 norm for all residuals. */
-    if (g) {
-      for (i = 0 ; i < number ; ++i) {
+    if (g != NULL) {
+      for (i = 0; i < number; ++i) {
         t = x[i];
         g[i] = gscl*t;
         result += mu*t*t;
       }
     } else {
-      for (i = 0 ; i < number ; ++i) {
+      for (i = 0; i < number; ++i) {
         t = x[i];
         result += mu*t*t;
       }
@@ -239,8 +238,8 @@ static double cost_l2l1(const double hyper[],
     /* L2-L1 norm for negative residuals, L2 norm for positive residuals. */
     qneg = ONE/hyper[1];
     fneg = gscl*hyper[1]*hyper[1];
-    if (g) {
-      for (i = 0 ; i < number ; ++i) {
+    if (g != NULL) {
+      for (i = 0; i < number; ++i) {
         if ((t = x[i]) < ZERO) {
           q = qneg*t;
           g[i] = gscl*t/(ONE + q);
@@ -251,7 +250,7 @@ static double cost_l2l1(const double hyper[],
         }
       }
     } else {
-      for (i = 0 ; i < number ; ++i) {
+      for (i = 0; i < number; ++i) {
         if ((t = x[i]) < ZERO) {
           q = qneg*t;
           result += fneg*(q - log(ONE + q));
@@ -266,8 +265,8 @@ static double cost_l2l1(const double hyper[],
     /* L2 norm for negative residuals, L2-L1 norm for positive residuals. */
     qpos = ONE/hyper[2];
     fpos = gscl*hyper[2]*hyper[2];
-    if (g) {
-      for (i = 0 ; i < number ; ++i) {
+    if (g != NULL) {
+      for (i = 0; i < number; ++i) {
         if ((t = x[i]) > ZERO) {
           q = qpos*t;
           g[i] = gscl*t/(ONE + q);
@@ -278,7 +277,7 @@ static double cost_l2l1(const double hyper[],
         }
       }
     } else {
-      for (i = 0 ; i < number ; ++i) {
+      for (i = 0; i < number; ++i) {
         if ((t = x[i]) > ZERO) {
           q = qpos*t;
           result += fpos*(q - log(ONE + q));
@@ -295,8 +294,8 @@ static double cost_l2l1(const double hyper[],
     fneg = gscl*hyper[1]*hyper[1];
     qpos = ONE/hyper[2];
     fpos = gscl*hyper[2]*hyper[2];
-    if (g) {
-      for (i = 0 ; i < number ; ++i) {
+    if (g != NULL) {
+      for (i = 0; i < number; ++i) {
         if ((t = x[i]) < ZERO) {
           q = qneg*t;
           g[i] = gscl*t/(ONE + q);
@@ -308,7 +307,7 @@ static double cost_l2l1(const double hyper[],
         }
       }
     } else {
-      for (i = 0 ; i < number ; ++i) {
+      for (i = 0; i < number; ++i) {
         if ((t = x[i]) < ZERO) {
           q = qneg*t;
           result += fneg*(q - log(ONE + q));
@@ -326,7 +325,7 @@ static double cost_l2l1(const double hyper[],
 
 static double cost_l2l0(const double hyper[],
                         const double x[], double g[], size_t number,
-                        int kase)
+                        int choice)
 {
   const double ZERO = 0.0;
   const double ONE = 1.0;
@@ -336,17 +335,17 @@ static double cost_l2l0(const double hyper[],
   result = ZERO;
   mu = hyper[0];
   s = mu + mu;
-  switch (kase) {
+  switch (choice) {
   case 0:
     /* L2 norm for all residuals. */
-    if (g) {
-      for (i = 0 ; i < number ; ++i) {
+    if (g != NULL) {
+      for (i = 0; i < number; ++i) {
         r = x[i];
         g[i] = s*r;
         result += r*r;
       }
     } else {
-      for (i = 0 ; i < number ; ++i) {
+      for (i = 0; i < number; ++i) {
         r = x[i];
         result += r*r;
       }
@@ -357,8 +356,8 @@ static double cost_l2l0(const double hyper[],
     /* L2-L0 norm for negative residuals, L2 norm for positive residuals. */
     tneg = hyper[1];
     qneg = ONE/tneg;
-    if (g) {
-      for (i = 0 ; i < number ; ++i) {
+    if (g != NULL) {
+      for (i = 0; i < number; ++i) {
         if ((r = x[i]) < ZERO) {
           t = qneg*r;
           r = tneg*atan(t);
@@ -370,7 +369,7 @@ static double cost_l2l0(const double hyper[],
         }
       }
     } else {
-      for (i = 0 ; i < number ; ++i) {
+      for (i = 0; i < number; ++i) {
         if ((r = x[i]) < ZERO) {
           r = tneg*atan(qneg*r);
           result += r*r;
@@ -385,8 +384,8 @@ static double cost_l2l0(const double hyper[],
     /* L2 norm for negative residuals, L2-L0 norm for positive residuals. */
     tpos = hyper[2];
     qpos = ONE/tpos;
-    if (g) {
-      for (i = 0 ; i < number ; ++i) {
+    if (g != NULL) {
+      for (i = 0; i < number; ++i) {
         if ((r = x[i]) > ZERO) {
           t = qpos*r;
           r = tpos*atan(t);
@@ -407,8 +406,8 @@ static double cost_l2l0(const double hyper[],
     qneg = ONE/tneg;
     tpos = hyper[2];
     qpos = ONE/tpos;
-    if (g) {
-      for (i = 0 ; i < number ; ++i) {
+    if (g != NULL) {
+      for (i = 0; i < number; ++i) {
         if ((r = x[i]) < ZERO) {
           t = qneg*r;
           r = tneg*atan(t);
@@ -420,7 +419,7 @@ static double cost_l2l0(const double hyper[],
         result += r*r;
       }
     } else {
-      for (i = 0 ; i < number ; ++i) {
+      for (i = 0; i < number; ++i) {
         if ((r = x[i]) < ZERO) {
           r = tneg*atan(qneg*r);
         } else {
