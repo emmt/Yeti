@@ -120,9 +120,7 @@ void yeti_bad_argument(Symbol *s)
 }
 
 static void unexpected_keyword_argument(void)
-{
-  unexpected_keyword_argument();
-}
+{ YError("unexpected keyword argument in builtin function call"); }
 
 void yeti_unknown_keyword(void)
 { YError("unrecognized keyword in builtin function call"); }
