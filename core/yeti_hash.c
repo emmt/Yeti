@@ -62,53 +62,53 @@ struct h_table {
   int references;         /* reference counter */
   Operations *ops;        /* virtual function table */
   long        eval;       /* index to eval method (-1L if none) */
-  int         rehash;     /* this table needs rehash? */
   h_uint_t    number;     /* number of entries */
-  h_uint_t    size;       /* number of allocated slots */
-  h_entry_t **slot;       /* dynamically malloc'ed slots */
+  h_uint_t    size;       /* number of elements in bucket */
+  h_uint_t    new_size;   /* if > size, indicates rehash is needed */
+  h_entry_t **bucket;     /* dynamically malloc'ed bucket of entries */
 };
 
 struct h_entry {
   h_entry_t  *next;      /* next entry or NULL */
   OpTable    *sym_ops;   /* client data value = Yorick's symbol */
   SymbolValue sym_value;
-  h_uint_t    key;       /* hash key */
+  h_uint_t    hash;      /* hashed key */
   char        name[1];   /* entry name, actual size is large enough for
                             whole string name to fit (MUST BE LAST MEMBER) */
 };
 
 /*
  * Tests about the hashing method:
- *   ------------------ -------- ---------------------------------------------
- *   hash code           cost(*) histogram of slot occupation
- *   ------------------ -------- ---------------------------------------------
- *   KEY+=(KEY<<1)+CODE   1.38   [1386,545,100,17]
- *   KEY+=(KEY<<2)+CODE   1.42   [1399,522,107,20]
- *   KEY+=(KEY<<3)+CODE   1.43   [1404,511,116,15, 2]
- *   KEY =(KEY<<1)^CODE   1.81   [1434,481, 99,31, 2, 0,0,0,0,0,0,0,0,0,0,0,1]
- *   KEY =(KEY<<2)^CODE   2.09   [1489,401,112,31, 9, 4,1,0,0,0,0,0,0,0,0,0,1]
- *   KEY =(KEY<<3)^CODE   2.82   [1575,310, 95,28,19,10,4,3,2,1,0,0,0,0,0,0,1]
- *   ------------------ -------- ---------------------------------------------
- *   (*) cost = mean # of tests to localize an item
- *   TCL randomize method is:     KEY += (KEY<<3) + C
- *   Yorick randomize method is:  KEY  = (KEY<<1) ^ C
+ * ---------------------------------------------------------------------------
+ * Hashing code         Cost(*)  Histogram of bucket occupation
+ * ---------------------------------------------------------------------------
+ * HASH+=(HASH<<1)+BYTE   1.38   [1386,545,100,17]
+ * HASH+=(HASH<<2)+BYTE   1.42   [1399,522,107,20]
+ * HASH+=(HASH<<3)+BYTE   1.43   [1404,511,116,15, 2]
+ * HASH =(HASH<<1)^BYTE   1.81   [1434,481, 99,31, 2, 0,0,0,0,0,0,0,0,0,0,0,1]
+ * HASH =(HASH<<2)^BYTE   2.09   [1489,401,112,31, 9, 4,1,0,0,0,0,0,0,0,0,0,1]
+ * HASH =(HASH<<3)^BYTE   2.82   [1575,310, 95,28,19,10,4,3,2,1,0,0,0,0,0,0,1]
+ * ---------------------------------------------------------------------------
+ * (*) cost = mean # of tests to localize an item
+ * TCL randomize method is:     HASH += (HASH<<3) + BYTE
+ * Yorick randomize method is:  HASH  = (HASH<<1) ^ BYTE
  */
 
-/* Piece of code to randomize a string.  KEY, LEN, CODE and NAME must be
-   variables.  KEY, LEN, CODE must be unsigned integers (h_uint_t) and NAME
-   an unsigned character array. */
-#define H_HASH(KEY, LEN, NAME, CODE)					\
-  do {									\
-    const unsigned char * __temp__ = (const unsigned char *)NAME;	\
-    for (KEY = LEN = 0; (CODE = __temp__[LEN]); ++LEN) {		\
-      KEY += (KEY<<3) + CODE;						\
-    }									\
+/* Piece of code to randomize a string.  HASH, LEN, BYTE and NAME must be
+   variables.  HASH, LEN, BYTE must be unsigned integers (h_uint_t) and NAME
+   must be an array of unsigned characters (bytes). */
+#define H_HASH(HASH, LEN, NAME, BYTE)                                   \
+  do {                                                                  \
+    const unsigned char * __temp__ = (const unsigned char *)NAME;       \
+    for (HASH = LEN = 0; (BYTE = __temp__[LEN]); ++LEN) {               \
+      HASH += (HASH<<3) + BYTE;                                         \
+    }                                                                   \
   } while (0)
 
 /* Use this macro to check if hash table ENTRY match string NAME.
-   LEN is the length of NAME and KEY the hash key computed from NAME. */
-#define H_MATCH(ENTRY, KEY, NAME, LEN) \
-  ((ENTRY)->key == KEY && ! strncmp(NAME, (ENTRY)->name, LEN))
+   LEN is the length of NAME and HASH the hash value computed from NAME. */
+#define H_MATCH(ENTRY, HASH, NAME, LEN) \
+  ((ENTRY)->hash == HASH && ! strncmp(NAME, (ENTRY)->name, LEN))
 
 
 extern h_table_t *h_new(h_uint_t number);
@@ -141,7 +141,7 @@ extern BuiltIn Y_is_hash;
 extern BuiltIn Y_h_new, Y_h_get, Y_h_set, Y_h_has, Y_h_pop, Y_h_stat;
 extern BuiltIn Y_h_debug, Y_h_keys, Y_h_first, Y_h_next;
 
-static h_table_t *get_hash(Symbol *stack);
+static h_table_t *get_table(Symbol *stack);
 /*----- Returns hash table stored by symbol STACK.  STACK get replaced by
         the referenced object if it is a reference symbol. */
 
@@ -149,7 +149,7 @@ static void set_members(h_table_t *obj, Symbol *stack, int nargs);
 /*----- Parse arguments STACK[0]..STACK[NARGS-1] as key-value pairs to
         store in hash table OBJ. */
 
-static int get_hash_and_key(int nargs, h_table_t **table,
+static int get_table_and_key(int nargs, h_table_t **table,
                             const char **keystr);
 
 static void get_member(Symbol *owner, h_table_t *table, const char *name);
@@ -384,7 +384,7 @@ void Y_h_set(int nargs)
   h_table_t *table;
   if (nargs < 1 || nargs%2 != 1)
     YError("usage: h_set,table,\"key\",value,... -or- h_set,table,key=value,...");
-  table = get_hash(sp - nargs + 1);
+  table = get_table(sp - nargs + 1);
   if (nargs > 1) {
     set_members(table, sp - nargs + 2, nargs - 1);
     Drop(nargs-1); /* just left the target object on top of the stack */
@@ -397,7 +397,7 @@ void Y_h_get(int nargs)
      hash table object) by entry contents. */
   h_table_t *table;
   const char *name;
-  if (get_hash_and_key(nargs, &table, &name)) {
+  if (get_table_and_key(nargs, &table, &name)) {
     YError("usage: h_get(table, \"key\") -or- h_get(table, key=)");
   }
   Drop(nargs - 1);             /* only left hash table on top of stack */
@@ -409,7 +409,7 @@ void Y_h_has(int nargs)
   int result;
   h_table_t *table;
   const char *name;
-  if (get_hash_and_key(nargs, &table, &name)) {
+  if (get_table_and_key(nargs, &table, &name)) {
     YError("usage: h_has(table, \"key\") -or- h_has(table, key=)");
   }
   result = (h_find(table, name) != NULL);
@@ -419,33 +419,33 @@ void Y_h_has(int nargs)
 
 void Y_h_pop(int nargs)
 {
-  h_uint_t key, len, code, index;
+  h_uint_t hash, len, code, index;
   h_entry_t *entry, *prev;
   h_table_t *table;
   const char *name;
 
   Symbol *stack = sp + 1; /* location to put new element */
-  if (get_hash_and_key(nargs, &table, &name)) {
+  if (get_table_and_key(nargs, &table, &name)) {
     YError("usage: h_pop(table, \"key\") -or- h_pop(table, key=)");
   }
 
   /* *** Code more or less stolen from 'h_remove' *** */
 
   if (name) {
-    /* Compute hash key. */
-    H_HASH(key, len, name, code);
+    /* Hash key. */
+    H_HASH(hash, len, name, code);
 
     /* Find the entry. */
     prev = NULL;
-    index = (key % table->size);
-    entry = table->slot[index];
+    index = (hash % table->size);
+    entry = table->bucket[index];
     while (entry) {
-      if (H_MATCH(entry, key, name, len)) {
+      if (H_MATCH(entry, hash, name, len)) {
         /* Delete the entry: (1) remove entry from chained list of entries in
-           its slot, (2) pop contents of entry, (3) free entry memory. */
+           its bucket, (2) pop contents of entry, (3) free entry memory. */
         /*** CRITICAL CODE BEGIN ***/
         if (prev) prev->next = entry->next;
-        else table->slot[index] = entry->next;
+        else table->bucket[index] = entry->next;
         stack->ops   = entry->sym_ops;
         stack->value = entry->sym_value;
         h_free(entry);
@@ -482,13 +482,13 @@ void Y_h_keys(int nargs)
   char **result;
   h_uint_t i, j, number;
   if (nargs != 1) YError("h_keys takes exactly one argument");
-  table = get_hash(sp);
+  table = get_table(sp);
   number = table->number;
   if (number) {
     result = YETI_PUSH_NEW_Q(yeti_start_dimlist(number));
     j = 0;
     for (i = 0; i < table->size; ++i) {
-      for (entry = table->slot[i]; entry != NULL; entry = entry->next) {
+      for (entry = table->bucket[i]; entry != NULL; entry = entry->next) {
         if (j >= number) YError("corrupted hash table");
         result[j++] = p_strcpy(entry->name);
       }
@@ -503,16 +503,16 @@ void Y_h_first(int nargs)
   h_table_t *table;
   char *name;
   h_uint_t j, n;
-  h_entry_t **slot;
+  h_entry_t **bucket;
 
   if (nargs != 1) YError("h_first takes exactly one argument");
-  table = get_hash(sp);
+  table = get_table(sp);
   name = NULL;
-  slot = table->slot;
+  bucket = table->bucket;
   n = table->size;
   for (j = 0; j < n; ++j) {
-    if (slot[j]) {
-      name = slot[j]->name;
+    if (bucket[j]) {
+      name = bucket[j]->name;
       break;
     }
   }
@@ -523,12 +523,12 @@ void Y_h_next(int nargs)
 {
   Operand arg;
   h_table_t *table;
-  h_entry_t *entry, **slot;
+  h_entry_t *entry, **bucket;
   const char *name;
-  h_uint_t key, len, code, j, n;
+  h_uint_t hash, len, code, j, n;
 
   if (nargs != 2) YError("h_next takes exactly two arguments");
-  table = get_hash(sp - 1);
+  table = get_table(sp - 1);
 
   /* Get scalar string argument. */
   if (sp->ops == NULL) {
@@ -545,14 +545,14 @@ void Y_h_next(int nargs)
     return;
   }
 
-  /* Compute hash key. */
-  H_HASH(key, len, name, code);
+  /* Hash key. */
+  H_HASH(hash, len, name, code);
 
   /* Locate matching entry. */
-  j = (key % table->size);
-  slot = table->slot;
-  for (entry = slot[j]; entry != NULL; entry = entry->next) {
-    if (H_MATCH(entry, key, (const char *)name, len)) {
+  j = (hash % table->size);
+  bucket = table->bucket;
+  for (entry = bucket[j]; entry != NULL; entry = entry->next) {
+    if (H_MATCH(entry, hash, (const char *)name, len)) {
       /* Get 'next' hash entry. */
       if (entry->next) {
         name = (const char *)entry->next->name;
@@ -560,7 +560,7 @@ void Y_h_next(int nargs)
         name = (const char *)0;
         n = table->size;
         while (++j < n) {
-          entry = slot[j];
+          entry = bucket[j];
           if (entry) {
             name = (const char *)entry->name;
             break;
@@ -577,14 +577,14 @@ void Y_h_next(int nargs)
 void Y_h_stat(int nargs)
 {
   Array *array;
-  h_entry_t *entry, **slot;
+  h_entry_t *entry, **bucket;
   h_table_t *table;
   long *result;
   h_uint_t i, number, max_count=0, sum_count=0;
   if (nargs != 1) YError("h_stat takes exactly one argument");
-  table = get_hash(sp);
+  table = get_table(sp);
   number = table->number;
-  slot = table->slot;
+  bucket = table->bucket;
   array = YETI_PUSH_NEW_ARRAY_L(yeti_start_dimlist(number + 1));
   result = array->value.l;
   for (i = 0; i <= number; ++i) {
@@ -592,7 +592,7 @@ void Y_h_stat(int nargs)
   }
   for (i = 0; i < table->size; ++i) {
     h_uint_t count = 0;
-    for (entry = slot[i]; entry != NULL; entry = entry->next) {
+    for (entry = bucket[i]; entry != NULL; entry = entry->next) {
       ++count;
     }
     if (count <= number) {
@@ -653,7 +653,7 @@ void Y_h_evaluator(int nargs)
 
   if (nargs < 1 || nargs > 2) YError("h_evaluator takes 1 or 2 arguments");
   push_result =  ! yarg_subroutine();
-  table = get_hash(sp - nargs + 1);
+  table = get_table(sp - nargs + 1);
   old_index = table->eval;
 
   if (nargs == 2) {
@@ -745,8 +745,8 @@ static void get_member(Symbol *owner, h_table_t *table, const char *name)
 
 /* get args from the top of the stack: first arg is hash table, second arg
    should be key name or keyword followed by third nil arg */
-static int get_hash_and_key(int nargs, h_table_t **table,
-                            const char **keystr)
+static int get_table_and_key(int nargs, h_table_t **table,
+                             const char **keystr)
 {
   Operand op;
   Symbol *s, *stack;
@@ -758,7 +758,7 @@ static int get_hash_and_key(int nargs, h_table_t **table,
     if (s->ops) {
       s->ops->FormOperand(s, &op);
       if (! op.type.dims && op.ops->typeID == T_STRING) {
-        *table = get_hash(stack);
+        *table = get_table(stack);
         *keystr = *(char **)op.value;
         return 0;
       }
@@ -766,7 +766,7 @@ static int get_hash_and_key(int nargs, h_table_t **table,
   } else if (nargs == 3) {
     /* e.g.: foo(table, key=) */
     if (! (stack + 1)->ops && is_nil(stack + 2)) {
-      *table = get_hash(stack);
+      *table = get_table(stack);
       *keystr = globalTable.names[(stack + 1)->index];
       return 0;
     }
@@ -774,7 +774,7 @@ static int get_hash_and_key(int nargs, h_table_t **table,
   return -1;
 }
 
-static h_table_t *get_hash(Symbol *stack)
+static h_table_t *get_table(Symbol *stack)
 {
   DataBlock *db;
   Symbol *sym = (stack->ops == &referenceSym) ? &globTab[stack->index] : stack;
@@ -842,34 +842,34 @@ h_table_t *h_new(h_uint_t number)
     h_error("insufficient memory for new hash table");
     return NULL;
   }
-  table->slot = h_malloc(nbytes);
-  if (table->slot == NULL) {
+  table->bucket = h_malloc(nbytes);
+  if (table->bucket == NULL) {
     h_free(table);
     goto enomem;
   }
-  memset(table->slot, 0, nbytes);
-  table->rehash = 0;
+  memset(table->bucket, 0, nbytes);
   table->references = 0;
   table->ops = &hashOps;
   table->eval = -1L;
   table->number = 0;
   table->size = size;
+  table->new_size = size;
   return table;
 }
 
 void h_delete(h_table_t *table)
 {
   h_uint_t i, size;;
-  h_entry_t *entry, **slot;
+  h_entry_t *entry, **bucket;
 
   if (table != NULL) {
-    if (table->rehash) {
+    if (table->new_size > table->size) {
       rehash(table);
     }
     size = table->size;
-    slot = table->slot;
+    bucket = table->bucket;
     for (i = 0; i < size; ++i) {
-      entry = slot[i];
+      entry = bucket[i];
       while (entry) {
         void *addr = entry;
         if (entry->sym_ops == &dataBlockSym) {
@@ -880,29 +880,29 @@ void h_delete(h_table_t *table)
         h_free(addr);
       }
     }
-    h_free(slot);
+    h_free(bucket);
     h_free(table);
   }
 }
 
 h_entry_t *h_find(h_table_t *table, const char *name)
 {
-  h_uint_t key, len, code;
+  h_uint_t hash, len, code;
   h_entry_t *entry;
 
-  /* Check key string and compute hash key. */
+  /* Check key string and compute hash value. */
   if (name == NULL) return NULL; /* not found */
-  H_HASH(key, len, name, code);
+  H_HASH(hash, len, name, code);
 
-  /* Ensure consistency of the buckets. */
-  if (table->rehash) {
+  /* Ensure consistency of the bucket. */
+  if (table->new_size > table->size) {
     rehash(table);
   }
 
   /* Locate matching entry. */
-  for (entry = table->slot[key % table->size];
+  for (entry = table->bucket[hash % table->size];
        entry != NULL; entry = entry->next) {
-    if (H_MATCH(entry, key, name, len)) return entry;
+    if (H_MATCH(entry, hash, name, len)) return entry;
   }
 
   /* Not found. */
@@ -911,32 +911,32 @@ h_entry_t *h_find(h_table_t *table, const char *name)
 
 int h_remove(h_table_t *table, const char *name)
 {
-  h_uint_t key, len, code, index;
+  h_uint_t hash, len, code, index;
   h_entry_t *entry, *prev;
 
-  /* Check key string and compute hash key. */
+  /* Check key string and compute hash value. */
   if (name == NULL) return 0; /* not found */
-  H_HASH(key, len, name, code);
+  H_HASH(hash, len, name, code);
 
-  /* Ensure consistency of the buckets. */
-  if (table->rehash) {
+  /* Ensure consistency of the bucket. */
+  if (table->new_size > table->size) {
     rehash(table);
   }
 
   /* Find the entry. */
   prev = NULL;
-  index = key % table->size;
-  entry = table->slot[index];
+  index = hash % table->size;
+  entry = table->bucket[index];
   while (entry != NULL) {
-    if (H_MATCH(entry, key, name, len)) {
+    if (H_MATCH(entry, hash, name, len)) {
       /* Delete the entry: (1) remove entry from chained list of entries in
-         its slot, (2) unreference contents of entry, (3) free entry
+         its bucket, (2) unreference contents of entry, (3) free entry
          memory. */
       /*** CRITICAL CODE BEGIN ***/
       if (prev != NULL) {
         prev->next = entry->next;
       } else {
-        table->slot[index] = entry->next;
+        table->bucket[index] = entry->next;
       }
       if (entry->sym_ops == &dataBlockSym) {
         DataBlock *db = entry->sym_value.db;
@@ -955,7 +955,7 @@ int h_remove(h_table_t *table, const char *name)
 
 int h_insert(h_table_t *table, const char *name, Symbol *sym)
 {
-  h_uint_t key, len, code, index;
+  h_uint_t hash, len, code, index;
   h_entry_t *entry;
   DataBlock *db;
 
@@ -965,11 +965,11 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
     return -1; /* error */
   }
 
-  /* Compute hash key. */
-  H_HASH(key, len, name, code);
+  /* Hash key. */
+  H_HASH(hash, len, name, code);
 
-  /* Ensure consistency of the buckets. */
-  if (table->rehash) {
+  /* Ensure consistency of the bucket. */
+  if (table->new_size > table->size) {
     rehash(table);
   }
 
@@ -987,9 +987,9 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
   }
 
   /* Replace contents of the entry with same key name if it already exists. */
-  for (entry = table->slot[key % table->size];
+  for (entry = table->bucket[hash % table->size];
        entry != NULL; entry = entry->next) {
-    if (H_MATCH(entry, key, name, len)) {
+    if (H_MATCH(entry, hash, name, len)) {
       /*** CRITICAL CODE BEGIN ***/
       db = (entry->sym_ops == &dataBlockSym) ? entry->sym_value.db : NULL;
       entry->sym_ops = &intScalar; /* avoid clash in case of interrupts */
@@ -1008,29 +1008,28 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
 
   /* Must create a new entry. */
   if (((table->number + 1)<<1) > table->size) {
-    /* Must grow hash table slot array, i.e. "re-hash".  This is done in such
-       a way that the buckets array is always consistent. This is needed to be
-       robust in case of interrupts (at most one entry could be lost in this
-       case). */
-    h_entry_t **old, **new;
+    /* Must grow hash table bucket, i.e. "re-hash".  This is done in such a way
+       that the bucket is always consistent. This is needed to be robust in
+       case of interrupts (at most one entry could be lost in this case). */
+    h_entry_t **old_bucket, **new_bucket;
     h_uint_t size;
     size_t nbytes;
 
     size = table->size;
     nbytes = size*sizeof(h_entry_t *);
-    old = table->slot;
-    new = h_malloc(2*nbytes);
-    if (new == NULL) {
+    old_bucket = table->bucket;
+    new_bucket = h_malloc(2*nbytes);
+    if (new_bucket == NULL) {
     not_enough_memory:
       h_error("insufficient memory to store new hash entry");
       return -1;
     }
-    memcpy(new, old, nbytes);
-    memset((char *)new + nbytes, 0, nbytes);
+    memcpy(new_bucket, old_bucket, nbytes);
+    memset((char *)new_bucket + nbytes, 0, nbytes);
     /*** CRITICAL CODE BEGIN ***/
-    table->slot = new;
-    table->rehash = 1;
-    h_free(old);
+    table->bucket = new_bucket;
+    table->new_size = 2*table->size;
+    h_free(old_bucket);
     /*** CRITICAL CODE END ***/
     rehash(table);
   }
@@ -1039,7 +1038,7 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
   entry = h_malloc(OFFSET(h_entry_t, name) + 1 + len);
   if (entry == NULL) goto not_enough_memory;
   memcpy(entry->name, name, len+1);
-  entry->key = key;
+  entry->hash = hash;
   if (sym->ops == &dataBlockSym) {
     db = sym->value.db;
     entry->sym_value.db = Ref(db);
@@ -1049,10 +1048,10 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
   entry->sym_ops = sym->ops;
 
   /* Insert new entry. */
-  index = key % table->size;
+  index = hash % table->size;
   /*** CRITICAL CODE BEGIN ***/
-  entry->next = table->slot[index];
-  table->slot[index] = entry;
+  entry->next = table->bucket[index];
+  table->bucket[index] = entry;
   ++table->number;
   /*** CRITICAL CODE END ***/
   return 0; /* a new entry was created */
@@ -1064,18 +1063,19 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
    risk to loose entries. */
 static void rehash(h_table_t *table)
 {
-  h_entry_t **slot, *prev, *entry;
+  h_entry_t **bucket, *prev, *entry;
   h_uint_t i, j, new_size, old_size;
 
-  if (table->rehash) {
-    slot = table->slot;
-    new_size = (old_size = table->size) << 1;
+  if (table->new_size > table->size) {
+    bucket = table->bucket;
+    old_size = table->size;
+    new_size = table->new_size;
     for (i = 0; i < old_size; ++i) {
       prev = NULL;
-      entry = slot[i];
+      entry = bucket[i];
       while (entry != NULL) {
-        /* Compute index of the entry in the full array of buckets. */
-        j = entry->key % new_size;
+        /* Compute index of the entry in the new bucket. */
+        j = entry->hash % new_size;
         if (j == i) {
           /* No change in entry location, just move to next entry in bucket. */
           prev = entry;
@@ -1084,22 +1084,19 @@ static void rehash(h_table_t *table)
           /*** CRITICAL CODE BEGIN ***/
           /* Remove entry from its bucket. */
           if (prev == NULL) {
-            slot[i] = entry->next;
+            bucket[i] = entry->next;
           } else {
             prev->next = entry->next;
           }
           /* Insert entry in its new bucket. */
-          entry->next = slot[j];
-          slot[j] = entry;
+          entry->next = bucket[j];
+          bucket[j] = entry;
           /*** CRITICAL CODE END ***/
           /* Move to next entry in former bucket. */
-          entry = ((prev == NULL) ? slot[i] : prev->next);
+          entry = ((prev == NULL) ? bucket[i] : prev->next);
         }
       }
     }
-    /*** CRITICAL CODE BEGIN ***/
-    table->rehash = 0; /* clear before setting size */
     table->size = new_size;
-    /*** CRITICAL CODE END ***/
   }
 }
