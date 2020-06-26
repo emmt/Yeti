@@ -454,6 +454,26 @@ extern value_of_symlink;
  */
 
 /*---------------------------------------------------------------------------*/
+/* TUPLE-LIKE OBJECTS */
+
+extern tuple;
+/* DOCUMENT tup = tuple(arg1, arg2, ...);
+
+     Yields a lightweight tuple-like object collecting references to items
+     ARG1, ARG2, ...  A tuple instance can be indexed to retrieve the different
+     items:
+
+         tup(i) __________ yields i-th item using Yorick's conventions that
+                           i <= 0 refers to the end of the range;
+         tup() ___________ yields the number of items.
+
+     Tuples may be used to get around the limitation that Yorick functions can
+     only return a single value.
+
+   SEE ALSO _lst.
+*/
+
+/*---------------------------------------------------------------------------*/
 /* HASH TABLE OBJECTS */
 
 extern h_debug;

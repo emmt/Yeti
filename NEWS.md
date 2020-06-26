@@ -1,3 +1,5 @@
+* Add `tuple` function to create lightweight tuple-like objects.
+
 ## 2018-03-09: Yeti version 6.4.1 released.
 * Add autostart file and logo.
 * Improve `anonymous` to have no side effects.

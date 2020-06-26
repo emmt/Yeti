@@ -55,7 +55,8 @@ TGT=$(DEFAULT_TGT)
 PKG_NAME=yeti
 PKG_I=$(srcdir)/yeti.i
 
-OBJS = yeti_convolve.o \
+OBJS = tuples.o \
+       yeti_convolve.o \
        yeti_cost.o \
        yeti_hash.o \
        yeti_sort.o \
