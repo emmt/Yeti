@@ -1,8 +1,9 @@
 /*
- * yeti_fftw.i --
+ * fftw.i --
  *
- * Implement support for FFTW, the "fastest Fourier transform in the West",
- * in Yorick.
+ * Implement support for FFTW (version 2), the "fastest Fourier transform in
+ * the West", in Yorick.  This package is certainly outdated, consider using
+ * XFFT instead (https://github.com/emmt/XFFT).
  *
  *-----------------------------------------------------------------------------
  *
@@ -36,7 +37,7 @@
  */
 
 /* load dynamic code */
-if (is_func(plug_in)) plug_in, "yeti_fftw";
+if (is_func(plug_in)) plug_in, "yor_fftw";
 
 extern fftw_plan;
 /* DOCUMENT fftw_plan(dimlist, dir)

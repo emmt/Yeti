@@ -1,7 +1,7 @@
 #if 0
 plug_dir,".";
 include,"./yeti.i";
-include,"./yeti_yhdf.i";
+include,"./yhdf.i";
 #endif
 
 func yhd_test_random_0(type, ..)

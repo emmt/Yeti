@@ -1,4 +1,7 @@
-# these values filled in by    yorick -batch make.i
+# Where are the sources?
+srcdir=.
+
+# These values filled in by `yorick -batch make.i` or `configure` script.
 Y_MAKEDIR=
 Y_EXE=
 Y_EXE_PKGS=
@@ -14,10 +17,10 @@ TGT=$(DEFAULT_TGT)
 
 # ------------------------------------------------ macros for this package
 
-PKG_NAME=yeti_regex
-PKG_I=yeti_regex.i
+PKG_NAME=yor_fftw
+PKG_I=$(srcdir)/fftw.i
 
-OBJS=yeti_regex.o
+OBJS=yfftw.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick
@@ -25,7 +28,7 @@ PKG_EXENAME=yorick
 # PKG_DEPLIBS=-Lsomedir -lsomelib   for dependencies of this package
 PKG_DEPLIBS =
 # set compiler (or rarely loader) flags specific to this package
-PKG_CFLAGS =
+PKG_CFLAGS = -DHAVE_FFTW=0
 PKG_LDFLAGS=
 
 # list of additional package names you want in PKG_EXENAME
@@ -33,10 +36,10 @@ PKG_LDFLAGS=
 EXTRA_PKGS=$(Y_EXE_PKGS)
 
 # list of additional files for clean
-PKG_CLEAN=
+PKG_CLEAN=make_doc.i fftw.doc
 
 # autoload file for this package, if any
-PKG_I_START=
+PKG_I_START=$(srcdir)/fftw-start.i
 # non-pkg.i include files for this package, if any
 PKG_I_EXTRA=
 
@@ -63,12 +66,23 @@ MAKE_TEMPLATE = protect-against-1.5
 
 # ------------------------------------- targets and rules for this package
 
+doc: fftw.doc
+
+fftw.doc: $(PKG_I)
+	echo  >make_doc.i "#include \"mkdoc.i\""
+	echo >>make_doc.i "mkdoc, \"$(srcdir)/fftw.i\", \"$@\";"
+	$(Y_EXE) -batch make_doc.i
+
+install-doc: fftw.doc
+	$(YNSTALL) fftw.doc $(Y_EXE_SITE)/doc
+
 # simple example:
 #myfunc.o: myapi.h
 # more complex example (also consider using PKG_CFLAGS above):
 #myfunc.o: myapi.h myfunc.c
 #	$(CC) $(CPPFLAGS) $(CFLAGS) -DMY_SWITCH -o $@ -c myfunc.c
 
-yeti_regex.o: yeti_regex.c
+%.o: $(srcdir)/%.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
 
 # -------------------------------------------------------- end of Makefile

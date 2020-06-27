@@ -1,4 +1,7 @@
-# these values filled in by    yorick -batch make.i
+# Where are the sources?
+srcdir=.
+
+# These values filled in by `yorick -batch make.i` or `configure` script.
 Y_MAKEDIR=
 Y_EXE=
 Y_EXE_PKGS=
@@ -14,18 +17,18 @@ TGT=$(DEFAULT_TGT)
 
 # ------------------------------------------------ macros for this package
 
-PKG_NAME=yeti_tiff
-PKG_I=yeti_tiff.i
+PKG_NAME=yor_regex
+PKG_I=$(srcdir)/regex.i
 
-OBJS=yeti_tiff.o
+OBJS=yregex.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick
 
 # PKG_DEPLIBS=-Lsomedir -lsomelib   for dependencies of this package
-PKG_DEPLIBS = -ltiff
+PKG_DEPLIBS =
 # set compiler (or rarely loader) flags specific to this package
-PKG_CFLAGS =  -DHAVE_TIFF=1
+PKG_CFLAGS =
 PKG_LDFLAGS=
 
 # list of additional package names you want in PKG_EXENAME
@@ -33,10 +36,10 @@ PKG_LDFLAGS=
 EXTRA_PKGS=$(Y_EXE_PKGS)
 
 # list of additional files for clean
-PKG_CLEAN=
+PKG_CLEAN=make_doc.i regex.doc
 
 # autoload file for this package, if any
-PKG_I_START=
+PKG_I_START=$(srcdir)/regex-start.i
 # non-pkg.i include files for this package, if any
 PKG_I_EXTRA=
 
@@ -63,10 +66,23 @@ MAKE_TEMPLATE = protect-against-1.5
 
 # ------------------------------------- targets and rules for this package
 
+doc: regex.doc
+
+regex.doc: $(PKG_I)
+	echo  >make_doc.i "#include \"mkdoc.i\""
+	echo >>make_doc.i "mkdoc, \"$(srcdir)/regex.i\", \"$@\";"
+	$(Y_EXE) -batch make_doc.i
+
+install-doc: regex.doc
+	$(YNSTALL) regex.doc $(Y_EXE_SITE)/doc
+
 # simple example:
 #myfunc.o: myapi.h
 # more complex example (also consider using PKG_CFLAGS above):
 #myfunc.o: myapi.h myfunc.c
 #	$(CC) $(CPPFLAGS) $(CFLAGS) -DMY_SWITCH -o $@ -c myfunc.c
+
+%.o: $(srcdir)/%.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
 
 # -------------------------------------------------------- end of Makefile

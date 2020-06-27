@@ -1,42 +1,7 @@
-#
-# Makefile -
-#
-# Makefile for Yeti main plugin.
-#
-#------------------------------------------------------------------------------
-#
-# Copyright (C) 2006-2010, Eric Thiébaut <thiebaut@obs.univ-lyon1.fr>
-#
-# This software is governed by the CeCILL-C license under French law and
-# abiding by the rules of distribution of free software.  You can use, modify
-# and/or redistribute the software under the terms of the CeCILL-C license as
-# circulated by CEA, CNRS and INRIA at the following URL
-# "http://www.cecill.info".
-#
-# As a counterpart to the access to the source code and rights to copy,
-# modify and redistribute granted by the license, users are provided only
-# with a limited warranty and the software's author, the holder of the
-# economic rights, and the successive licensors have only limited liability.
-#
-# In this respect, the user's attention is drawn to the risks associated with
-# loading, using, modifying and/or developing or reproducing the software by
-# the user in light of its specific status of free software, that may mean
-# that it is complicated to manipulate, and that also therefore means that it
-# is reserved for developers and experienced professionals having in-depth
-# computer knowledge. Users are therefore encouraged to load and test the
-# software's suitability as regards their requirements in conditions enabling
-# the security of their systems and/or data to be ensured and, more
-# generally, to use and operate it in the same conditions as regards
-# security.
-#
-# The fact that you are presently reading this means that you have had
-# knowledge of the CeCILL-C license and that you accept its terms.
-#------------------------------------------------------------------------------
-
-# where are the sources?
+# Where are the sources?
 srcdir=.
 
-# these values filled in by: yorick -batch make.i
+# These values filled in by `yorick -batch make.i` or `configure` script.
 Y_MAKEDIR=
 Y_EXE=
 Y_EXE_PKGS=
@@ -83,12 +48,12 @@ PKG_LDFLAGS =
 EXTRA_PKGS=$(Y_EXE_PKGS)
 
 # list of additional files for clean
-PKG_CLEAN=$(PKG_NAME)$(PLUG_SFX) $(PKG_NAME).dll $(PKG_NAME).so
+PKG_CLEAN=make_doc.i yeti.doc yhdf.doc
 
 # autoload file for this package, if any
-PKG_I_START=$(srcdir)/yeti-start.i
+PKG_I_START=$(srcdir)/yeti-start.i $(srcdir)/yhdf-start.i
 # non-pkg.i include files for this package, if any
-PKG_I_EXTRA=$(srcdir)/yeti_yhdf.i
+PKG_I_EXTRA=$(srcdir)/yhdf.i
 
 #-------------------------------------- standard targets and rules (in Makepkg)
 
@@ -113,22 +78,43 @@ MAKE_TEMPLATE = protect-against-1.5
 
 #------------------------------------------- targets and rules for this package
 
+doc: yeti.doc yhdf.doc
+
+yeti.doc: $(PKG_I)
+	echo  >make_doc.i "#include \"mkdoc.i\""
+	echo >>make_doc.i "mkdoc, \"$(srcdir)/yeti.i\", \"$@\";"
+	$(Y_EXE) -batch make_doc.i
+
+yhdf.doc: $(PKG_I)
+	echo  >make_doc.i "#include \"mkdoc.i\""
+	echo >>make_doc.i "mkdoc, \"$(srcdir)/yhdf.i\", \"$@\";"
+	$(Y_EXE) -batch make_doc.i
+
+install-doc: yeti.doc yhdf.doc
+	$(YNSTALL) yeti.doc $(Y_EXE_SITE)/doc
+	$(YNSTALL) yhdf.doc $(Y_EXE_SITE)/doc
+
 # simple example:
 #myfunc.o: myapi.h
 # more complex example (also consider using PKG_CFLAGS above):
 #myfunc.o: myapi.h myfunc.c
 #	$(CC) $(CPPFLAGS) $(CFLAGS) -DMY_SWITCH -o $@ -c myfunc.c
 
-yeti_convolve.o: yeti.h
+%.o: $(srcdir)/%.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
+
+yeti_convolve.o: $(srcdir)/yeti.h
 #yeti_cost.o:
-yeti_eigen.o: yeti_eigen.c
+yeti_eigen.o: $(srcdir)/yeti_eigen.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DYORICK -o $@ -c $<
-yeti_hash.o: yeti.h ../config.h
-yeti_heapsort.o: yeti.h ../config.h
-yeti_math.o: yeti.h ../config.h
-yeti_misc.o: yeti.h ../config.h
-yeti_morph.o: yeti.h ../config.h
-yeti_rgl.o: yeti_rgl.c
+yeti_hash.o: $(srcdir)/yeti.h ../config.h
+yeti_heapsort.o: $(srcdir)/yeti.h ../config.h
+yeti_math.o: $(srcdir)/yeti.h ../config.h
+yeti_misc.o: $(srcdir)/yeti.h ../config.h
+yeti_morph.o: $(srcdir)/yeti.h ../config.h
+yeti_rgl.o: $(srcdir)/yeti_rgl.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DYORICK -o $@ -c $<
-yeti_utils.o: yeti.h ../config.h
+yeti_utils.o: $(srcdir)/yeti.h ../config.h
 #yeti_new.o:
+
+# -------------------------------------------------------- end of Makefile

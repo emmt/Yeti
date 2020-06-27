@@ -15,15 +15,5 @@ autoload, "yeti.i", anonymous, arc, cost_l2, cost_l2l0, cost_l2l1, fullsizeof,
   same_encoding, setup_package, sinc, smooth3, sparse_expand, sparse_grow,
   sparse_matrix, sparse_restore, sparse_save, sparse_squeeze, strlower,
   strtrimleft, strtrimright, strupper, symbol_info, symlink_to_name,
-    symlink_to_variable, tuple, value_of_symlink, yeti_convolve, yeti_init,
+  symlink_to_variable, tuple, value_of_symlink, yeti_convolve, yeti_init,
   yeti_wavelet;
-
-autoload, "yeti_yhdf.i", yhd_save, yhd_check, yhd_info, yhd_restore;
-
-autoload, "yeti_fftw.i", fftw_plan, fftw, cfftw, fftw_indgen, fftw_dist,
-  fftw_smooth, fftw_convolve;
-
-autoload, "yeti_tiff.i", tiff_check, tiff_debug, tiff_open, tiff_read,
-  tiff_read_directory, tiff_read_image, tiff_read_pixels;
-
-autoload, "yeti_regex.i", regcomp, regmatch, regmatch_part, regsub;

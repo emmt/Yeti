@@ -1,4 +1,5 @@
-/* config.i -
+/*
+ * config.i -
  *
  * Configuration script for setting up building of Yeti.
  *
@@ -98,7 +99,7 @@ func cfg_help {
 
 func cfg_configure(argv)
 {
-  extern CFG_DIR;
+  extern CFG_BUILD_DIR;
   extern CFG_YORICK;
   extern CFG_YORICK_VERSION;
   extern CFG_YORICK_VERSION_MAJOR, CFG_YORICK_VERSION_MINOR, CFG_YORICK_VERSION_MICRO;
@@ -109,20 +110,21 @@ func cfg_configure(argv)
   extern CFG_WITH_TIFF, CFG_WITH_TIFF_DEFS, CFG_WITH_TIFF_LIBS;
 
   CFG_YORICK = argv(1);
-  CFG_DIR = get_cwd();
+  CFG_BUILD_DIR = get_cwd();
   CFG_TMP = "config.tmp";
   CFG_DEBUG = 0n;
 
-  pkg_list = ["fftw", "regex", "tiff"];
+  subdirs = ["core", "fftw", "regex", "tiff"];
+  optional_packages = ["fftw", "regex", "tiff"];
 
   nil = string();
   s = string();
   argc = numberof(argv);
-  for (i=2 ; i<=argc ; ++i) {
+  for (i = 2; i <= argc; ++i) {
     arg = argv(i);
     if (arg == "-h" || arg == "--help") {
       cfg_help;
-      if (batch()) quit;
+      if (batch()) quit; else return;
     } else if (arg == "--debug") {
       CFG_DEBUG = 1n;
     } else if ((s = cfg_split(arg, "--yorick="))) {
@@ -144,7 +146,7 @@ func cfg_configure(argv)
   }
 
   /* Get version of Yeti. */
-  CFG_YETI_VERSION = rdline(open("VERSION"));
+  CFG_YETI_VERSION = rdline(open(cfg_join_path(CFG_SRCDIR, "VERSION")));
   cfg_parse_version, "CFG_YETI", CFG_YETI_VERSION;
 
   /* Get version of Yorick executable. */
@@ -193,9 +195,7 @@ func cfg_configure(argv)
   /* Byte order. */
   CFG_BYTE_ORDER = 0;
   n = sizeof(int);
-  buf = array(char, n);
-  for (i = 1; i <= n; ++i) buf(i) = i;
-  val = cfg_cast(buf, int);
+  val = cfg_cast(char(indgen(n)), int);
   if (n == 2) {
     if (val == 0x0102) {
       CFG_BYTE_ORDER = +1;
@@ -219,7 +219,6 @@ func cfg_configure(argv)
     cfg_die, "unknown byte order";
   }
 
-
   /* Greeting message. */
   cfg_prt;
   cfg_prt, "*** This is the configuration script for Yeti ***";
@@ -233,55 +232,64 @@ func cfg_configure(argv)
     CFG_YORICK_VERSION_MAJOR, CFG_YORICK_VERSION_MINOR,
     CFG_YORICK_VERSION_MICRO, CFG_YORICK_VERSION_SUFFIX;
 
-  /* Build/fix Makefile and yeti.h in directory yeti. */
-  cfg_prt;
-  cfg_prt, "Setup for building Yeti...";
-  cfg_change_dir, "core";
-  cfg_fix_makefile;
-  cfg_change_dir, "doc";
-  cfg_fix_makefile;
-
-  yeti_pkgs = "core";
-  for (i=1 ; i<=numberof(pkg_list) ; ++i) {
-    pkg = pkg_list(i);
-    PKG = strcase(1, pkg);
-    with_pkg = symbol_def("CFG_WITH_" + PKG);
-    if ((s = structof(with_pkg)) == string) {
-      with_pkg = (strcase(0, with_pkg) == "yes");
+  /* Collect list of Yeti components to build and create Makefiles. */
+  components = "core";
+  build = array(int, numberof(subdirs));
+  for (i = 1; i <= numberof(subdirs); ++i) {
+    subdir = subdirs(i);
+    srcdir = cfg_join_path(CFG_SRCDIR, subdir);
+    dstdir = cfg_join_path(CFG_BUILD_DIR, subdir);
+    optional = (sum(optional_packages == subdir) != 0);
+    if (optional) {
+      /* Optional component. */
+      pkg = subdir;
+      PKG = strcase(1, pkg);
+      with_pkg = symbol_def("CFG_WITH_" + PKG);
+      if ((s = structof(with_pkg)) == string) {
+        with_pkg = (strcase(0, with_pkg) == "yes");
+      } else {
+        with_pkg = !(! with_pkg);
+      }
+      cfg_prt;
+      define_have_macro = (pkg == "fftw" || pkg == "tiff");
+      if (with_pkg) {
+        defs = symbol_def("CFG_WITH_" + PKG + "_DEFS");
+        libs = symbol_def("CFG_WITH_" + PKG + "_LIBS");
+        if (define_have_macro) defs += " -DHAVE_" + PKG + "=1";
+        cfg_prt, "Package \"%s\" will be built with the following settings:", pkg;
+        cfg_prt, "  PKG_CFLAGS  = %s", defs;
+        cfg_prt, "  PKG_DEPLIBS = %s", libs;
+        components += " " + pkg;
+      } else {
+        cfg_prt, "Package \"%s\" will not be built.", pkg;
+        defs = (define_have_macro ? "-DHAVE_" + PKG + "=0" : "");
+        libs = "";
+      }
+      cfg_filter, style = "make",
+        input  = cfg_join_path(srcdir, "Makefile.in"),
+        output = cfg_join_path(dstdir, "Makefile"),
+        "srcdir", srcdir,
+        "PKG_CFLAGS", defs,
+        "PKG_DEPLIBS", libs;
     } else {
-      with_pkg = !(! with_pkg);
+      /* Non-optional component. */
+      cfg_filter, style = "make",
+        input  = cfg_join_path(srcdir, "Makefile.in"),
+        output = cfg_join_path(dstdir, "Makefile"),
+        "srcdir", srcdir;
     }
-    cfg_prt;
-    def_have = (pkg == "fftw" || pkg == "tiff");
-    if (with_pkg) {
-      defs = symbol_def("CFG_WITH_" + PKG + "_DEFS");
-      libs = symbol_def("CFG_WITH_" + PKG + "_LIBS");
-      if (def_have) defs += " -DHAVE_" + PKG + "=1";
-      cfg_prt, "Package \"%s\" will be built with the following settings:", pkg;
-      cfg_prt, "  PKG_CFLAGS  = %s", defs;
-      cfg_prt, "  PKG_DEPLIBS = %s", libs;
-      yeti_pkgs += " " + pkg;
-    } else {
-      cfg_prt, "Package \"%s\" will not be built.", pkg;
-      defs = (def_have ? "-DHAVE_" + PKG + "=0" : "");
-      libs = "";
-    }
-
-    /* Build/fix package Makefile. */
-    cfg_change_dir, pkg;
-    cfg_fix_makefile;
-    cfg_update, "Makefile", "make",
-      "PKG_CFLAGS", defs,
-      "PKG_DEPLIBS", libs;
   }
-
 
   /* Fix top level Makefile and creates config.h. */
   cfg_prt;
   cfg_prt, "Setting up top-level Makefile...";
-  cd, CFG_DIR;
-  cfg_update, "Makefile.in", "make",
-    "YETI_PKGS", yeti_pkgs,
+  srcdir = CFG_SRCDIR;
+  dstdir = CFG_BUILD_DIR;
+  cfg_filter, style = "make",
+    input  = cfg_join_path(srcdir, "Makefile.in"),
+    output = cfg_join_path(dstdir, "Makefile"),
+    "srcdir", srcdir,
+    "YETI_COMPONENTS", components,
     "YETI_VERSION_MAJOR", CFG_YETI_VERSION_MAJOR,
     "YETI_VERSION_MINOR", CFG_YETI_VERSION_MINOR,
     "YETI_VERSION_MICRO", CFG_YETI_VERSION_MICRO,
@@ -290,8 +298,9 @@ func cfg_configure(argv)
     "YORICK_VERSION_MINOR", CFG_YORICK_VERSION_MINOR,
     "YORICK_VERSION_MICRO", CFG_YORICK_VERSION_MICRO,
     "YORICK_VERSION_SUFFIX", "\"" + CFG_YORICK_VERSION_SUFFIX + "\"";
-  cfg_fix_makefile;
-  cfg_update, "config.h.in", "cpp",
+  cfg_filter, style = "cpp",
+    input  = cfg_join_path(srcdir, "config.h.in"),
+    output = cfg_join_path(dstdir, "config.h"),
     "YETI_VERSION_MAJOR", CFG_YETI_VERSION_MAJOR,
     "YETI_VERSION_MINOR", CFG_YETI_VERSION_MINOR,
     "YETI_VERSION_MICRO", CFG_YETI_VERSION_MICRO,
@@ -351,7 +360,6 @@ func cfg_prt(x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13)
 
 func cfg_yes_or_no(arg) { return (arg ? "yes" : "no"); }
 
-
 func cfg_die(msg, ..)
 {
   while (more_args()) msg += next_arg();
@@ -402,7 +410,7 @@ func cfg_load(filename, grain)
   }
 }
 
-func cfg_update(target, style, ..)
+func cfg_filter(.., input=, output=, style=)
 {
   if (style == "cpp") {
     fmt1 = "^#[ \t]*define[ \t][ \t]*%s([ \t]|$)";
@@ -414,41 +422,85 @@ func cfg_update(target, style, ..)
     fmt1 = "^[ \t]*%s[ \t]*=";
     fmt2 = "%s = %s";
   } else {
-    cfg_die, "cfg_update: bad value for STYLE parameter";
+    cfg_die, "cfg_filter: bad value for STYLE keyword";
   }
 
-  /* Load text file. */
-  buf = cfg_load(target);
-
+  /* Load input file and filter it. */
+  buf = cfg_load(input);
   while (more_args()) {
-    macro = next_arg();
-    if (! more_args()) cfg_die, "cfg_update: missing macro value";
-    value = next_arg();
-    if ((s = structof(value)) != string) {
-      if (s==long || s==int || s==short || s==char) {
-        value = swrite(format="%d", value);
+    local macro, value;
+    eq_nocopy, macro, next_arg();
+    if (! more_args()) cfg_die, "cfg_filter: missing macro value";
+    eq_nocopy, value, next_arg();
+    _cfg_filter_helper, macro, value;
+  }
+  if (style == "make") {
+    home = cfg_despace(cfg_strip_ext(Y_HOME, "/"));
+    site = cfg_despace(cfg_strip_ext(Y_SITE, "/"));
+    exe  = cfg_despace(CFG_YORICK);
+    _cfg_filter_helper, "Y_MAKEDIR", home;
+    _cfg_filter_helper, "Y_EXE", exe;
+    _cfg_filter_helper, "Y_EXE_HOME", home;
+    _cfg_filter_helper, "Y_EXE_SITE", site;
+  }
+
+  /* Create destination. */
+  mkdirp, dirname(output);
+  if (CFG_DEBUG && open(output, "r", 1)) {
+      rename, output, output + ".bak";
+  }
+  write, open(output, "w"), format="%s\n", buf;
+}
+
+func _cfg_filter_helper(macro, value)
+{
+  extern buf, fmt1, fmt2;
+  if ((s = structof(value)) != string) {
+    if (s == long || s == int || s == short || s == char) {
+      value = swrite(format="%d", value);
+    } else {
+      cfg_die, "unexpected data type for value of macro ", macro;
+    }
+  }
+  pat = swrite(format=fmt1, macro);
+  i = where(strgrep(pat, buf)(2,) > 0);
+  if (is_array(i)) {
+    buf(i) = swrite(format=fmt2, macro, value);
+  }
+}
+
+func cfg_despace(name)
+{
+  /* backspace escape blanks in path names */
+  return streplace(name, strfind(" ",name,n=256), "\\ ");
+}
+
+func cfg_strip_ext(name, ext)
+{
+  len = strlen(ext);
+  if (len > 0 && strpart(name, 1-len:0) == ext) {
+    return strpart(name, 1:-len);
+  } else {
+    return name;
+  }
+}
+
+func cfg_join_path(path, ..)
+{
+  sep = "/";
+  while (more_args()) {
+    local arg;
+    eq_nocopy, arg, next_arg();
+    if (strlen(arg) > 0) {
+      if (strlen(path) > 0 && strpart(path, 0:0) != sep &&
+          strpart(arg, 1:1) != sep) {
+        path += sep + arg;
       } else {
-        cfg_die, "unexpected data type for value of macro ", macro;
+        path += arg;
       }
     }
-    pat = swrite(format=fmt1, macro);
-    i = where(strgrep(pat, buf)(2,) > 0);
-    if (is_array(i)) buf(i) = swrite(format=fmt2, macro, value);
   }
-
-  /* Replace old file by new one. */
-  if (strlen(target) > 3 && strpart(target, -3:-3) != "/"
-      && strpart(target, -2:0) == ".in") {
-    dest = strpart(target, 1:-3);
-    write, open(dest, "w"), format="%s\n", buf;
-  } else {
-    backup = target + ".bak";
-    temporary = target + ".tmp";
-    write, open(temporary, "w"), format="%s\n", buf;
-    rename, target, backup;
-    rename, temporary, target;
-    if (! CFG_DEBUG) remove, backup;
-  }
+  return path;
 }
 
 func cfg_split(arg, prefix)
@@ -469,28 +521,47 @@ func cfg_define(name, value)
 func cfg_change_dir(dir)
 {
   write, format="  entering directory: %s\n", dir;
-  cd, CFG_DIR;
+  cd, CFG_BUILD_DIR;
   cd, dir;
 }
 
-func cfg_fix_makefile
+func cfg_fix_makefile(dir)
 {
+  cd, dir;
   write, format="%s", "  ";
   system, "\"" + CFG_YORICK + "\" -batch make.i";
+  cd, CFG_BUILD_DIR;
 }
 
-func cfg_cast(a, type, dimlist)
-/* DOCUMENT cfg_cast(a, type, dims)
-     This function returns array A reshaped to an array with given TYPE and
-     dimension list.
+func cfg_cast(a, eltype, dims)
+/* DOCUMENT cfg_cast(a, eltype, dims)
+     This function returns array A reshaped to an array with elemnt type ELTYPE
+     and dimensions DIMS.
 
    SEE ALSO: reshape.
  */
 {
   local r;
-  reshape, r, &a, type, dimlist;
+  reshape, r, &a, eltype, dims;
   return r;
 }
+
+func cfg_absdirname(file)
+/* DOCUMENT cfg_absdirname(file);
+
+     yields the absolute directory name of FILE which can be a file name or a
+     file stream.  The returned string is always an absolute directory name
+     (i.e., starting by a "/") terminated by a "/".
+
+   SEE ALSO: dirname, filepath, strfind. */
+{
+  if ((i = strfind("/", (path = filepath(file)), back=1)(2)) <= 0) {
+    error, "expecting a valid file name or a file stream";
+  }
+  return strpart(path, 1:i);
+}
+
+CFG_SRCDIR = cfg_absdirname(current_include());
 
 /*---------------------------------------------------------------------------*/
 /* CLOSURE (run the configuration script if in batch mode) */

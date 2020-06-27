@@ -1,4 +1,14 @@
-* Add `tuple` function to create lightweight tuple-like objects.
+* New `tuple` function to create lightweight tuple-like objects.
+* Yeti can be compiled from anywhere (just run the `configure` script in the
+  directory where you want to build Yeti and its components).
+* The `yeti_` prefix has been removed from all `yeti_*.i` files.  If you rely
+  on auto-load and do not explicitly `include` such files, this should be
+  automatically handled for you.
+* Yeti components are now independent from Yeti itself (they all have their own
+  auto-load file, the name of associated dynamic library is `yor_$pkg.i` with
+  `$pkg` the name of the component).
+* Type `make install-doc` to build and install the documentation of the chosen
+  components.
 
 ## 2018-03-09: Yeti version 6.4.1 released.
 * Add autostart file and logo.

@@ -1,5 +1,5 @@
 /*
- * yeti_regex.c --
+ * yregex.c --
  *
  * Regular expressions for Yorick.
  *

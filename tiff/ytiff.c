@@ -1,5 +1,5 @@
 /*
- * yeti_tiff.c -
+ * ytiff.c -
  *
  * Implement support for TIFF images in Yorick.
  *

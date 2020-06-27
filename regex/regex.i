@@ -1,5 +1,5 @@
 /*
- * yeti_regex.i --
+ * regex.i --
  *
  * POSIX regular expressions for Yorick.
  *
@@ -36,7 +36,7 @@
  */
 
 /* load dynamic code */
-if (is_func(plug_in)) plug_in, "yeti_regex";
+if (is_func(plug_in)) plug_in, "yor_regex";
 
 extern regcomp;
 /* DOCUMENT regcomp(reg);

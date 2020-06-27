@@ -1,5 +1,5 @@
 /*
- * yeti_tiff.i --
+ * tiff.i --
  *
  * Support for TIFF images in Yorick.
  *
@@ -35,7 +35,7 @@
  */
 
 /* load dynamic code */
-if (is_func(plug_in)) plug_in, "yeti_tiff";
+if (is_func(plug_in)) plug_in, "yor_tiff";
 
 extern tiff_open;
 /* DOCUMENT tiff_open(filename)

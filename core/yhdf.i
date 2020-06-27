@@ -1,5 +1,5 @@
 /*
- * yeti_yhdf.i --
+ * yhdf.i --
  *
  * Implement support for Yeti Hierarchical Data File.
  *
