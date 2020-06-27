@@ -1,5 +1,5 @@
 /*
- * yeti_misc.c -
+ * misc.c -
  *
  * Implement miscellaneous builtin functions in Yeti.
  *

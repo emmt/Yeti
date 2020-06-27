@@ -1,7 +1,7 @@
 /*
- * yeti_sparse.c -
+ * sparse.c -
  *
- * Implement sparse matrix in Yorick.
+ * Implement sparse matrices in Yorick.
  *
  *-----------------------------------------------------------------------------
  *

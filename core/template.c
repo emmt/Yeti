@@ -1,5 +1,5 @@
 /*
- * yeti_template.c --
+ * template.c --
  *
  * Implementation of XXXX in Yeti.
  *

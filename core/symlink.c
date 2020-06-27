@@ -1,7 +1,7 @@
 /*
- * yeti_symlink.c -
+ * symlink.c -
  *
- * Implement symbolic links in Yeti.
+ * Implement symbolic links for Yorick.
  *
  *-----------------------------------------------------------------------------
  *

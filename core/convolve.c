@@ -1,5 +1,5 @@
 /*
- * yeti_convolve.c -
+ * convolve.c -
  *
  * Convolution and wavelet smoothing along one dimension.
  *

@@ -1,5 +1,5 @@
 /*
- * yeti_morph.c -
+ * morph.c -
  *
  * Implement morpho-math operators in Yeti.
  *

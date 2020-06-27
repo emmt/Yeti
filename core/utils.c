@@ -1,5 +1,5 @@
 /*
- * yeti_utils.c -
+ * utils.c -
  *
  * Routines to make the coding of built-in Yorick's functions easier.
  *

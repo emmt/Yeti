@@ -20,19 +20,20 @@ TGT=$(DEFAULT_TGT)
 PKG_NAME=yeti
 PKG_I=$(srcdir)/yeti.i
 
-OBJS = tuples.o \
-       yeti_convolve.o \
-       yeti_cost.o \
-       yeti_hash.o \
-       yeti_sort.o \
-       yeti_math.o \
-       yeti_misc.o \
-       yeti_morph.o \
-       yeti_new.o \
-       yeti_rgl.o \
-       yeti_sparse.o \
-       yeti_symlink.o \
-       yeti_utils.o
+OBJS = \
+  convolve.o \
+  cost.o \
+  hash.o \
+  math.o \
+  misc.o \
+  newapi.o \
+  orph.o \
+  regul.o \
+  sort.o \
+  sparse.o \
+  symlink.o \
+  tuples.o \
+  utils.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME = yorick
@@ -103,18 +104,16 @@ install-doc: yeti.doc yhdf.doc
 %.o: $(srcdir)/%.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
 
-yeti_convolve.o: $(srcdir)/yeti.h
-#yeti_cost.o:
-yeti_eigen.o: $(srcdir)/yeti_eigen.c
+convolve.o: $(srcdir)/yeti.h
+#cost.o:
+hash.o: $(srcdir)/yeti.h ../config.h
+misc.o: $(srcdir)/yeti.h ../config.h
+morph.o: $(srcdir)/yeti.h ../config.h
+sort.o: $(srcdir)/yeti.h ../config.h
+math.o: $(srcdir)/yeti.h ../config.h
+regul.o: $(srcdir)/regul.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DYORICK -o $@ -c $<
-yeti_hash.o: $(srcdir)/yeti.h ../config.h
-yeti_heapsort.o: $(srcdir)/yeti.h ../config.h
-yeti_math.o: $(srcdir)/yeti.h ../config.h
-yeti_misc.o: $(srcdir)/yeti.h ../config.h
-yeti_morph.o: $(srcdir)/yeti.h ../config.h
-yeti_rgl.o: $(srcdir)/yeti_rgl.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -DYORICK -o $@ -c $<
-yeti_utils.o: $(srcdir)/yeti.h ../config.h
-#yeti_new.o:
+utils.o: $(srcdir)/yeti.h ../config.h
+#newapi.o:
 
 # -------------------------------------------------------- end of Makefile

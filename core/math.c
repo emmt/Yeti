@@ -1,5 +1,5 @@
 /*
- * yeti_math.c -
+ * math.c -
  *
  * Additional math builtin functions and generalized matrix-vector
  * multiplication for Yorick.

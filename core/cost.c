@@ -1,5 +1,5 @@
 /*
- * yeti_cost.c -
+ * cost.c -
  *
  * Implement various cost functions for solving inverse problems
  * in Yorick.

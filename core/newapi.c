@@ -1,5 +1,5 @@
 /*
- * yeti_new.c -
+ * newapi.c -
  *
  * Various built-in functions using the ney Yorick API defined in "yapi.h".
  *

@@ -1,5 +1,5 @@
 /*
- * yeti_sort.c -
+ * sort.c -
  *
  * Implement sorting functions in Yeti.
  *

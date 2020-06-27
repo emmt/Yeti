@@ -1,5 +1,5 @@
 /*
- * yeti_hash.c -
+ * hash.c -
  *
  * Implement hash table objects in Yorick.
  *

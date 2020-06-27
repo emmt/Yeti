@@ -1,7 +1,7 @@
 /*
- * yeti_rgl.c -
+ * regul.c -
  *
- * Regularization for Yeti (an extension of Yorick).
+ * Regularization functions for Yeti (an extension of Yorick).
  *
  *-----------------------------------------------------------------------------
  *
