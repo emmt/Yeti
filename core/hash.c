@@ -30,29 +30,29 @@
 #define h_malloc(SIZE)   p_malloc(SIZE)
 #define h_free(ADDR)     p_free(ADDR)
 
-#define OFFSET(type, member) ((char *)&((type *)0)->member - (char *)0)
+#define OFFSET(type, member) ((char*)&((type*)0)->member - (char*)0)
 
-typedef unsigned int h_uint_t;
 typedef struct h_table h_table_t;
 typedef struct h_entry h_entry_t;
 
 struct h_table {
-  int references;         /* reference counter */
-  Operations *ops;        /* virtual function table */
-  long        eval;       /* index to eval method (-1L if none) */
-  h_uint_t    number;     /* number of entries */
-  h_uint_t    size;       /* number of elements in bucket */
-  h_uint_t    new_size;   /* if > size, indicates rehash is needed */
-  h_entry_t **bucket;     /* dynamically malloc'ed bucket of entries */
+  int     references; /* reference counter */
+  Operations*    ops; /* virtual function table */
+  long          eval; /* index to eval method (-1L if none) */
+  size_t      number; /* number of entries */
+  size_t        size; /* number of elements in bucket */
+  size_t    new_size; /* if > size, indicates rehash is needed */
+  h_entry_t** bucket; /* dynamically malloc'ed bucket of entries */
 };
 
 struct h_entry {
-  h_entry_t  *next;      /* next entry or NULL */
-  OpTable    *sym_ops;   /* client data value = Yorick's symbol */
+  h_entry_t*       next; /* next entry or NULL */
+  OpTable*      sym_ops; /* client data value = Yorick's symbol */
   SymbolValue sym_value;
-  h_uint_t    hash;      /* hashed key */
-  char        name[1];   /* entry name, actual size is large enough for
-                            whole string name to fit (MUST BE LAST MEMBER) */
+  size_t           hash; /* hashed key */
+  char             name[1];
+                         /* entry name, actual size is large enough for whole
+                            string name to fit (MUST BE LAST MEMBER) */
 };
 
 /*
@@ -72,24 +72,29 @@ struct h_entry {
  * Yorick randomize method is:  HASH  = (HASH<<1) ^ BYTE
  */
 
-/* Piece of code to randomize a string.  HASH, LEN, BYTE and NAME must be
-   variables.  HASH, LEN, BYTE must be unsigned integers (h_uint_t) and NAME
-   must be an array of unsigned characters (bytes). */
-#define H_HASH(HASH, LEN, NAME, BYTE)                                   \
-  do {                                                                  \
-    const unsigned char * __temp__ = (const unsigned char *)NAME;       \
-    for (HASH = LEN = 0; (BYTE = __temp__[LEN]); ++LEN) {               \
-      HASH += (HASH<<3) + BYTE;                                         \
-    }                                                                   \
+/* Piece of code to randomize a string.  HASH and LEN must be
+   rvalues (e.g., variables) of integer type. */
+#define HASH_STRING(hash, len, str)                             \
+  do {                                                          \
+    const unsigned char* __str = (const unsigned char*)(str);   \
+    size_t __byte;                                              \
+    size_t __len = 0;                                           \
+    size_t __hash = 0;                                          \
+    while ((__byte = __str[__len]) != 0) {                      \
+      __hash += (__hash << 3) + __byte;                         \
+      ++__len;                                                  \
+    }                                                           \
+    (len) = __len;                                              \
+    (hash) = __hash;                                            \
   } while (0)
 
 /* Use this macro to check if hash table ENTRY match string NAME.
    LEN is the length of NAME and HASH the hash value computed from NAME. */
 #define H_MATCH(ENTRY, HASH, NAME, LEN) \
-  ((ENTRY)->hash == HASH && ! strncmp(NAME, (ENTRY)->name, LEN))
+  ((ENTRY)->hash == HASH && strncmp(NAME, (ENTRY)->name, LEN) == 0)
 
 
-extern h_table_t *h_new(h_uint_t number);
+extern h_table_t *h_new(size_t number);
 /*----- Create a new empty hash table with at least NUMBER slots
         pre-allocated (rounded up to a power of 2). */
 
@@ -184,7 +189,7 @@ static void PrintH(Operand *op)
     PrintFunc(globalTable.names[obj->eval]);
     PrintFunc("\"");
   }
-  sprintf(line, ", references=%d, number=%u, size=%u)",
+  sprintf(line, ", references=%d, number=%zu, size=%zu)",
           obj->references, obj->number, obj->size);
   PrintFunc(line);
   ForceNewline();
@@ -306,10 +311,10 @@ static int is_nil(Symbol *s)
   return (s->ops == &dataBlockSym && s->value.db == &nilDB);
 }
 
-static void push_string_value(const char *value)
+static void push_string_value(const char* value)
 {
-  ((Array *)PushDataBlock(NewArray(&stringStruct,  NULL)))->value.q[0] =
-    (value ? p_strcpy((char *)value) : NULL);
+  ((Array*)PushDataBlock(NewArray(&stringStruct, NULL)))->value.q[0] =
+    (value ? p_strcpy((char*)value) : NULL);
 }
 
 void Y_is_hash(int nargs)
@@ -397,7 +402,7 @@ void Y_h_has(int nargs)
 
 void Y_h_pop(int nargs)
 {
-  h_uint_t hash, len, code, index;
+  size_t hash, len, index;
   h_entry_t *entry, *prev;
   h_table_t *table;
   const char *name;
@@ -411,7 +416,7 @@ void Y_h_pop(int nargs)
 
   if (name) {
     /* Hash key. */
-    H_HASH(hash, len, name, code);
+    HASH_STRING(hash, len, name);
 
     /* Find the entry. */
     prev = NULL;
@@ -458,7 +463,7 @@ void Y_h_keys(int nargs)
   h_entry_t *entry;
   h_table_t *table;
   char **result;
-  h_uint_t i, j, number;
+  size_t i, j, number;
   if (nargs != 1) YError("h_keys takes exactly one argument");
   table = get_table(sp);
   number = table->number;
@@ -480,7 +485,7 @@ void Y_h_first(int nargs)
 {
   h_table_t *table;
   char *name;
-  h_uint_t j, n;
+  size_t j, n;
   h_entry_t **bucket;
 
   if (nargs != 1) YError("h_first takes exactly one argument");
@@ -503,7 +508,7 @@ void Y_h_next(int nargs)
   h_table_t *table;
   h_entry_t *entry, **bucket;
   const char *name;
-  h_uint_t hash, len, code, j, n;
+  size_t hash, len, j, n;
 
   if (nargs != 2) YError("h_next takes exactly two arguments");
   table = get_table(sp - 1);
@@ -524,7 +529,7 @@ void Y_h_next(int nargs)
   }
 
   /* Hash key. */
-  H_HASH(hash, len, name, code);
+  HASH_STRING(hash, len, name);
 
   /* Locate matching entry. */
   j = (hash % table->size);
@@ -558,7 +563,7 @@ void Y_h_stat(int nargs)
   h_entry_t *entry, **bucket;
   h_table_t *table;
   long *result;
-  h_uint_t i, number, max_count=0, sum_count=0;
+  size_t i, number, max_count=0, sum_count=0;
   if (nargs != 1) YError("h_stat takes exactly one argument");
   table = get_table(sp);
   number = table->number;
@@ -569,7 +574,7 @@ void Y_h_stat(int nargs)
     result[i] = 0L;
   }
   for (i = 0; i < table->size; ++i) {
-    h_uint_t count = 0;
+    size_t count = 0;
     for (entry = bucket[i]; entry != NULL; entry = entry->next) {
       ++count;
     }
@@ -796,15 +801,14 @@ static void set_members(h_table_t *table, Symbol *stack, int nargs)
   }
 }
 
-/*--------------------------------------------------------------------------*/
-/* The following code implement management of hash tables with string keys
-   and aimed at the storage of Yorick DataBlock.  The randomization
-   algorithm is taken from Tcl (which is 25-30% more efficient than
-   Yorick's algorithm). */
+/*---------------------------------------------------------------------------*/
+/* The following code implement management of hash tables with string keys and
+   aimed at the storage of Yorick DataBlock.  The hashing algorithm is taken
+   from Tcl (which is 25-30% more efficient than Yorick's algorithm). */
 
-h_table_t *h_new(h_uint_t number)
+h_table_t *h_new(size_t number)
 {
-  h_uint_t nbytes, size = 1;
+  size_t nbytes, size = 1;
   h_table_t *table;
 
   /* Member SIZE of a hash table is always a power of 2, greater or
@@ -837,7 +841,7 @@ h_table_t *h_new(h_uint_t number)
 
 void h_delete(h_table_t *table)
 {
-  h_uint_t i, size;;
+  size_t i, size;;
   h_entry_t *entry, **bucket;
 
   if (table != NULL) {
@@ -865,12 +869,12 @@ void h_delete(h_table_t *table)
 
 h_entry_t *h_find(h_table_t *table, const char *name)
 {
-  h_uint_t hash, len, code;
+  size_t hash, len;
   h_entry_t *entry;
 
   /* Check key string and compute hash value. */
   if (name == NULL) return NULL; /* not found */
-  H_HASH(hash, len, name, code);
+  HASH_STRING(hash, len, name);
 
   /* Ensure consistency of the bucket. */
   if (table->new_size > table->size) {
@@ -889,12 +893,12 @@ h_entry_t *h_find(h_table_t *table, const char *name)
 
 int h_remove(h_table_t *table, const char *name)
 {
-  h_uint_t hash, len, code, index;
+  size_t hash, len, index;
   h_entry_t *entry, *prev;
 
   /* Check key string and compute hash value. */
   if (name == NULL) return 0; /* not found */
-  H_HASH(hash, len, name, code);
+  HASH_STRING(hash, len, name);
 
   /* Ensure consistency of the bucket. */
   if (table->new_size > table->size) {
@@ -933,7 +937,7 @@ int h_remove(h_table_t *table, const char *name)
 
 int h_insert(h_table_t *table, const char *name, Symbol *sym)
 {
-  h_uint_t hash, len, code, index;
+  size_t hash, len, index;
   h_entry_t *entry;
   DataBlock *db;
 
@@ -944,7 +948,7 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
   }
 
   /* Hash key. */
-  H_HASH(hash, len, name, code);
+  HASH_STRING(hash, len, name);
 
   /* Ensure consistency of the bucket. */
   if (table->new_size > table->size) {
@@ -990,7 +994,7 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
        that the bucket is always consistent. This is needed to be robust in
        case of interrupts (at most one entry could be lost in this case). */
     h_entry_t **old_bucket, **new_bucket;
-    h_uint_t size;
+    size_t size;
     size_t nbytes;
 
     size = table->size;
@@ -1042,7 +1046,7 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
 static void rehash(h_table_t *table)
 {
   h_entry_t **bucket, *prev, *entry;
-  h_uint_t i, j, new_size, old_size;
+  size_t i, j, new_size, old_size;
 
   if (table->new_size > table->size) {
     bucket = table->bucket;
