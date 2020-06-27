@@ -1,4 +1,5 @@
 * New `tuple` function to create lightweight tuple-like objects.
+* Change to more permissive MIT "expat" license.
 * Yeti can be compiled from anywhere (just run the `configure` script in the
   directory where you want to build Yeti and its components).
 * The `yeti_` prefix has been removed from all `yeti_*.i` files.  If you rely

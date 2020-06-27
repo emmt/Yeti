@@ -26,8 +26,8 @@ OBJS = \
   hash.o \
   math.o \
   misc.o \
+  morph.o \
   newapi.o \
-  orph.o \
   regul.o \
   sort.o \
   sparse.o \
