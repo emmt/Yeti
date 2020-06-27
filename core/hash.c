@@ -18,9 +18,11 @@
 #include <string.h>
 #include "config.h"
 #include "yeti.h"
+#include "play.h"
 #include "yio.h"
 
 #undef H_DEBUG
+#undef H_REMOVE
 
 /*---------------------------------------------------------------------------*/
 /* DEFINITIONS FOR STRING HASH TABLES */
@@ -74,9 +76,9 @@ struct h_entry {
 
 /* Piece of code to randomize a string.  HASH and LEN must be
    rvalues (e.g., variables) of integer type. */
-#define HASH_STRING(hash, len, str)                             \
+#define HASH_STRING(HASH, LEN, STR)                             \
   do {                                                          \
-    const unsigned char* __str = (const unsigned char*)(str);   \
+    const unsigned char* __str = (const unsigned char*)(STR);   \
     size_t __byte;                                              \
     size_t __len = 0;                                           \
     size_t __hash = 0;                                          \
@@ -84,8 +86,8 @@ struct h_entry {
       __hash += (__hash << 3) + __byte;                         \
       ++__len;                                                  \
     }                                                           \
-    (len) = __len;                                              \
-    (hash) = __hash;                                            \
+    (LEN) = __len;                                              \
+    (HASH) = __hash;                                            \
   } while (0)
 
 /* Use this macro to check if hash table ENTRY match string NAME.
@@ -93,25 +95,26 @@ struct h_entry {
 #define H_MATCH(ENTRY, HASH, NAME, LEN) \
   ((ENTRY)->hash == HASH && strncmp(NAME, (ENTRY)->name, LEN) == 0)
 
-
-extern h_table_t *h_new(size_t number);
+static h_table_t* h_new(size_t number);
 /*----- Create a new empty hash table with at least NUMBER slots
         pre-allocated (rounded up to a power of 2). */
 
-extern void h_delete(h_table_t *table);
+static void h_delete(h_table_t* table);
 /*----- Destroy hash table TABLE and its contents. */
 
-extern h_entry_t *h_find(h_table_t *table, const char *name);
+static h_entry_t* h_find(h_table_t* table, const char* name);
 /*----- Returns the address of the entry in hash table TABLE that match NAME.
         If no entry is identified by NAME (or in case of error) NULL is
         returned. */
 
-extern int h_remove(h_table_t *table, const char *name);
+#ifdef H_REMOVE
+static int h_remove(h_table_t* table, const char* name);
 /*----- Remove entry identifed by NAME from hash table TABLE.  Return value
         is: 0 if no entry in TABLE match NAME, 1 if and entry matching NAME
         was found and unreferenced, -1 in case of error. */
+#endif
 
-extern int h_insert(h_table_t *table, const char *name, Symbol *sym);
+static int h_insert(h_table_t* table, const char* name, Symbol* sym);
 /*----- Insert entry identifed by NAME with contents SYM in hash table
         TABLE.  Return value is: 0 if no former entry in TABLE matched NAME
         (hence a new entry was created); 1 if a former entry in TABLE matched
@@ -124,22 +127,22 @@ extern BuiltIn Y_is_hash;
 extern BuiltIn Y_h_new, Y_h_get, Y_h_set, Y_h_has, Y_h_pop, Y_h_stat;
 extern BuiltIn Y_h_debug, Y_h_keys, Y_h_first, Y_h_next;
 
-static h_table_t *get_table(Symbol *stack);
+static h_table_t* get_table(Symbol* stack);
 /*----- Returns hash table stored by symbol STACK.  STACK get replaced by
         the referenced object if it is a reference symbol. */
 
-static void set_members(h_table_t *obj, Symbol *stack, int nargs);
+static void set_members(h_table_t* obj, Symbol* stack, int nargs);
 /*----- Parse arguments STACK[0]..STACK[NARGS-1] as key-value pairs to
         store in hash table OBJ. */
 
 static int get_table_and_key(int nargs, h_table_t **table,
                             const char **keystr);
 
-static void get_member(Symbol *owner, h_table_t *table, const char *name);
+static void get_member(Symbol* owner, h_table_t* table, const char* name);
 /*----- Replace stack symbol OWNER by the contents of entry matching NAME
         in hash TABLE (taking care of UnRef/Ref properly). */
 
-static void rehash(h_table_t *table);
+static int rehash(h_table_t* table);
 /*----- Rehash hash TABLE (taking care of interrupts). */
 
 /*--------------------------------------------------------------------------*/
@@ -154,8 +157,8 @@ extern BinaryOp AssignX, MatMultX;
 extern UnaryOp EvalX, SetupX, PrintX;
 static MemberOp GetMemberH;
 static UnaryOp PrintH;
-static void FreeH(void *addr);  /* ******* Use Unref(hash) ******* */
-static void EvalH(Operand *op);
+static void FreeH(void* addr);  /* ******* Use Unref(hash) ******* */
+static void EvalH(Operand* op);
 
 Operations hashOps = {
   &FreeH, T_OPAQUE, 0, /* promoteID = */T_STRING/* means illegal */,
@@ -171,12 +174,12 @@ Operations hashOps = {
 
 /* FreeH is automatically called by Yorick to delete an object instance
    that is no longer referenced. */
-static void FreeH(void *addr) { h_delete((h_table_t *)addr); }
+static void FreeH(void* addr) { h_delete((h_table_t*)addr); }
 
 /* PrintH is used by Yorick's info command. */
-static void PrintH(Operand *op)
+static void PrintH(Operand* op)
 {
-  h_table_t *obj = (h_table_t *)op->value;
+  h_table_t* obj = (h_table_t*)op->value;
   char line[80];
   ForceNewline();
   PrintFunc("Object of type: ");
@@ -196,54 +199,52 @@ static void PrintH(Operand *op)
 }
 
 /* GetMemberH implements the de-referencing '.' operator. */
-static void GetMemberH(Operand *op, char *name)
+static void GetMemberH(Operand* op, char* name)
 {
-  get_member(op->owner, (h_table_t *)op->value, name);
+  get_member(op->owner, (h_table_t*)op->value, name);
 }
 
 /* EvalH implements hash table used as a function or as an indexed array. */
-static void EvalH(Operand *op)
+static void EvalH(Operand* op)
 {
-  Symbol *s, *owner;
-  h_table_t *table;
-  DataBlock *old, *db;
-  OpTable *ops;
-  Operations *oper;
-  int i, nargs, offset;
-
   /* Get the hash table. */
-  owner = op->owner;
-  table = (h_table_t *)owner->value.db;
-  nargs = sp - owner; /* number of arguments */
+  Symbol* owner = op->owner;
+  h_table_t* table = (h_table_t*)owner->value.db;
+  int nargs = sp - owner; /* number of arguments */
 
   if (table->eval >= 0L) {
-    /* this hash table implement its own eval method */
-    s = &globTab[table->eval];
+    /* This hash table implement its own eval method. */
+    Symbol* s = &globTab[table->eval];
     while (s->ops == &referenceSym) {
       s = &globTab[s->index];
     }
-    db = s->value.db; /* correctness checked below */
+    Operations* oper;
+    DataBlock* db = s->value.db; /* correctness checked below */
     if (s->ops != &dataBlockSym || db == NULL
         || ((oper = db->ops) != &functionOps &&
             oper != &builtinOps && oper != &auto_ops)) {
       YError("non-function eval method");
     }
 
-    /* shift stack to prepend reference to eval method */
-    offset = owner - spBottom; /* stack may move */
+    /* Permute the stack to prepend reference to eval method.  First, make sure the
+       stack is large enough.  Second, check that there are no pending signals
+       before this critical operation.  Finally permute the stack. */
+    long offset = owner - spBottom; /* stack may move */
     if (CheckStack(2)) {
       owner = spBottom + offset;
       op->owner = owner;
     }
-    /*** CRITICAL CODE START ***/
-    {
-      volatile Symbol *stack = owner;
+    if (p_signalling) {
+        p_abort();
+    }
+    /*** CRITICAL CODE BEGIN ***/ {
+      Symbol* stack = owner;
       ++nargs; /* one more argument: the object itself */
-      i = nargs;
+      int i = nargs;
       stack[i].ops = &intScalar; /* set safe OpTable */
-      sp = (Symbol *)stack + i; /* it is now safe to grow the stack */
+      sp = stack + i; /* it is now safe to grow the stack */
       while (--i >= 0) {
-        ops = stack[i].ops;
+        OpTable* ops = stack[i].ops;
         stack[i].ops = &intScalar; /* set safe OpTable */
         stack[i + 1].value = stack[i].value;
         stack[i + 1].index = stack[i].index;
@@ -251,32 +252,32 @@ static void EvalH(Operand *op)
       }
       stack->value.db = RefNC(db); /* we already know that db != NULL */
       stack->ops = &dataBlockSym;
-    }
-    /*** CRITICAL CODE END ***/
+    } /*** CRITICAL CODE END ***/
 
-    /* re-form operand and call Eval method */
+    /* Re-form operand and call Eval method. */
     op->owner = owner; /* stack may have moved */
-    op->references = nargs;   /* (see FormEvalOp in array.c) */
+    op->references = nargs; /* (see FormEvalOp in array.c) */
     op->ops = db->ops;
     op->value = db;
     op->ops->Eval(op);
     return;
   }
 
-  /* got exactly one argument */
+  /* If we exactly get one non-keyword argument, extract the key. */
   if (nargs == 1 && sp->ops != NULL) {
     Operand arg;
     sp->ops->FormOperand(sp, &arg);
     if (arg.ops->typeID == T_STRING) {
       if (arg.type.dims == NULL) {
-        char *name = *(char **)arg.value;
-        h_entry_t *entry = h_find(table, name);
+        const char* name = *(char**)arg.value;
+        h_entry_t* entry = h_find(table, name);
         Drop(1); /* discard key name (after using it) */
-        old = (owner->ops == &dataBlockSym) ? owner->value.db : NULL;
+        DataBlock* old = (owner->ops == &dataBlockSym) ? owner->value.db : NULL;
+        OpTable* ops;
         owner->ops = &intScalar; /* avoid clash in case of interrupts */
         if (entry != NULL) {
           if ((ops = entry->sym_ops) == &dataBlockSym) {
-            db = entry->sym_value.db;
+            DataBlock* db = entry->sym_value.db;
             owner->value.db = Ref(db);
           } else {
             owner->value = entry->sym_value;
@@ -287,7 +288,7 @@ static void EvalH(Operand *op)
           ops = &dataBlockSym;
         }
         Unref(old);
-        owner->ops = ops;           /* change ops only AFTER value updated */
+        owner->ops = ops; /* change ops only AFTER value updated */
         return;
       }
     } else if (arg.ops->typeID == T_VOID) {
@@ -302,10 +303,10 @@ static void EvalH(Operand *op)
 /*---------------------------------------------------------------------------*/
 /* BUILTIN ROUTINES */
 
-static int is_nil(Symbol *s);
-static void push_string_value(const char *value);
+static int is_nil(Symbol* s);
+static void push_string_value(const char* value);
 
-static int is_nil(Symbol *s)
+static int is_nil(Symbol* s)
 {
   while (s->ops == &referenceSym) s = &globTab[s->index];
   return (s->ops == &dataBlockSym && s->value.db == &nilDB);
@@ -319,12 +320,11 @@ static void push_string_value(const char* value)
 
 void Y_is_hash(int nargs)
 {
-  Symbol *s;
-  int result;
   if (nargs != 1) YError("is_hash takes exactly one argument");
-  s = YETI_DEREF_SYMBOL(sp);
+  int result;
+  Symbol* s = YETI_DEREF_SYMBOL(sp);
   if (s->ops == &dataBlockSym && s->value.db->ops == &hashOps) {
-    if (((h_table_t *)s->value.db)->eval >= 0L) {
+    if (((h_table_t*)s->value.db)->eval >= 0L) {
       result = 2;
     } else {
       result = 1;
@@ -337,18 +337,18 @@ void Y_is_hash(int nargs)
 
 void Y_h_debug(int nargs)
 {
-  int i;
-  for (i=1 ; i<=nargs ; ++i) yeti_debug_symbol(sp - nargs + i);
+  for (int i = 1; i <= nargs; ++i) {
+    yeti_debug_symbol(sp - nargs + i);
+  }
   Drop(nargs);
 }
 
 void Y_h_new(int nargs)
 {
-  h_table_t *obj;
-  int initial_size, got_members;
-  const int min_size = 16;
-  Symbol *stack = sp - nargs + 1; /* first argument (we know that the stack
+  Symbol* stack = sp - nargs + 1; /* first argument (we know that the stack
                                      will NOT be moved) */
+  int got_members;
+  size_t initial_size;
   if (nargs == 0 || (nargs == 1 && is_nil(sp))) {
     got_members = 0;
     initial_size = 0;
@@ -356,18 +356,18 @@ void Y_h_new(int nargs)
     got_members = 1;
     initial_size = nargs/2;
   }
+  const size_t min_size = 16;
   if (initial_size < min_size) initial_size = min_size;
-  obj = h_new(initial_size);
+  h_table_t* obj = h_new(initial_size);
   PushDataBlock(obj);
   if (got_members) set_members(obj, stack, nargs);
 }
 
 void Y_h_set(int nargs)
 {
-  h_table_t *table;
   if (nargs < 1 || nargs%2 != 1)
     YError("usage: h_set,table,\"key\",value,... -or- h_set,table,key=value,...");
-  table = get_table(sp - nargs + 1);
+  h_table_t* table = get_table(sp - nargs + 1);
   if (nargs > 1) {
     set_members(table, sp - nargs + 2, nargs - 1);
     Drop(nargs-1); /* just left the target object on top of the stack */
@@ -378,8 +378,8 @@ void Y_h_get(int nargs)
 {
   /* Get hash table object and key name, then replace first argument (the
      hash table object) by entry contents. */
-  h_table_t *table;
-  const char *name;
+  h_table_t* table;
+  const char* name;
   if (get_table_and_key(nargs, &table, &name)) {
     YError("usage: h_get(table, \"key\") -or- h_get(table, key=)");
   }
@@ -389,52 +389,55 @@ void Y_h_get(int nargs)
 
 void Y_h_has(int nargs)
 {
-  int result;
-  h_table_t *table;
-  const char *name;
+  h_table_t* table;
+  const char* name;
   if (get_table_and_key(nargs, &table, &name)) {
     YError("usage: h_has(table, \"key\") -or- h_has(table, key=)");
   }
-  result = (h_find(table, name) != NULL);
+  int result = (h_find(table, name) != NULL);
   Drop(nargs);
   PushIntValue(result);
 }
 
 void Y_h_pop(int nargs)
 {
-  size_t hash, len, index;
-  h_entry_t *entry, *prev;
-  h_table_t *table;
-  const char *name;
-
-  Symbol *stack = sp + 1; /* location to put new element */
+  /* Parse arguments. */
+  h_table_t* table;
+  const char* name;
   if (get_table_and_key(nargs, &table, &name)) {
     YError("usage: h_pop(table, \"key\") -or- h_pop(table, key=)");
   }
 
+  /* Ensure that there are no pending signals before critical operation. */
+  if (p_signalling) {
+    p_abort();
+  }
+
   /* *** Code more or less stolen from 'h_remove' *** */
 
-  if (name) {
+  if (name != NULL) {
     /* Hash key. */
+    size_t hash, len;
     HASH_STRING(hash, len, name);
 
     /* Find the entry. */
-    prev = NULL;
-    index = (hash % table->size);
-    entry = table->bucket[index];
-    while (entry) {
+    h_entry_t* prev = NULL;
+    size_t index = (hash % table->size);
+    h_entry_t* entry = table->bucket[index];
+    while (entry != NULL) {
       if (H_MATCH(entry, hash, name, len)) {
         /* Delete the entry: (1) remove entry from chained list of entries in
            its bucket, (2) pop contents of entry, (3) free entry memory. */
-        /*** CRITICAL CODE BEGIN ***/
-        if (prev) prev->next = entry->next;
-        else table->bucket[index] = entry->next;
-        stack->ops   = entry->sym_ops;
-        stack->value = entry->sym_value;
-        h_free(entry);
-        --table->number;
-        sp = stack; /* sp updated AFTER new stack element finalized */
-        /*** CRITICAL CODE END ***/
+        /*** CRITICAL CODE BEGIN ***/ {
+          if (prev) prev->next = entry->next;
+          else table->bucket[index] = entry->next;
+          Symbol* stack = sp + 1; /* location to put new element */
+          stack->ops   = entry->sym_ops;
+          stack->value = entry->sym_value;
+          h_free(entry);
+          --table->number;
+          sp = stack; /* sp updated AFTER new stack element finalized */
+        } /*** CRITICAL CODE END ***/
         return; /* entry found and popped */
       }
       prev = entry;
@@ -446,32 +449,26 @@ void Y_h_pop(int nargs)
 
 void Y_h_number(int nargs)
 {
-  Symbol *s;
-  long result;
-
   if (nargs != 1) YError("h_number takes exactly one argument");
-  s = YETI_DEREF_SYMBOL(sp);
+  Symbol* s = YETI_DEREF_SYMBOL(sp);
   if (s->ops != &dataBlockSym || s->value.db->ops != &hashOps) {
     YError("inexpected non-hash table argument");
   }
-  result = ((h_table_t *)s->value.db)->number;
+  long result = ((h_table_t*)s->value.db)->number;
   PushLongValue(result);
 }
 
 void Y_h_keys(int nargs)
 {
-  h_entry_t *entry;
-  h_table_t *table;
-  char **result;
-  size_t i, j, number;
   if (nargs != 1) YError("h_keys takes exactly one argument");
-  table = get_table(sp);
-  number = table->number;
-  if (number) {
-    result = YETI_PUSH_NEW_Q(yeti_start_dimlist(number));
-    j = 0;
-    for (i = 0; i < table->size; ++i) {
-      for (entry = table->bucket[i]; entry != NULL; entry = entry->next) {
+  h_table_t* table = get_table(sp);
+  size_t number = table->number;
+  if (number > 0) {
+    char** result = YETI_PUSH_NEW_Q(yeti_start_dimlist(number));
+    size_t j = 0;
+    for (size_t i = 0; i < table->size; ++i) {
+      for (h_entry_t* entry = table->bucket[i];
+           entry != NULL; entry = entry->next) {
         if (j >= number) YError("corrupted hash table");
         result[j++] = p_strcpy(entry->name);
       }
@@ -483,18 +480,13 @@ void Y_h_keys(int nargs)
 
 void Y_h_first(int nargs)
 {
-  h_table_t *table;
-  char *name;
-  size_t j, n;
-  h_entry_t **bucket;
-
   if (nargs != 1) YError("h_first takes exactly one argument");
-  table = get_table(sp);
-  name = NULL;
-  bucket = table->bucket;
-  n = table->size;
-  for (j = 0; j < n; ++j) {
-    if (bucket[j]) {
+  h_table_t* table = get_table(sp);
+  char* name = NULL;
+  h_entry_t** bucket = table->bucket;
+  size_t n = table->size;
+  for (size_t j = 0; j < n; ++j) {
+    if (bucket[j] != NULL) {
       name = bucket[j]->name;
       break;
     }
@@ -504,53 +496,50 @@ void Y_h_first(int nargs)
 
 void Y_h_next(int nargs)
 {
-  Operand arg;
-  h_table_t *table;
-  h_entry_t *entry, **bucket;
-  const char *name;
-  size_t hash, len, j, n;
-
   if (nargs != 2) YError("h_next takes exactly two arguments");
-  table = get_table(sp - 1);
+  h_table_t* table = get_table(sp - 1);
 
   /* Get scalar string argument. */
   if (sp->ops == NULL) {
   bad_arg:
     YError("expecting a scalar string");
   }
+  Operand arg;
   sp->ops->FormOperand(sp, &arg);
   if (arg.type.dims != NULL || arg.ops->typeID != T_STRING) {
     goto bad_arg;
   }
-  name = *(const char **)arg.value;
+  const char* name = *(char**)arg.value;
   if (name == NULL) {
     /* Left nil string as result on top of stack. */
     return;
   }
 
   /* Hash key. */
+  size_t hash, len;
   HASH_STRING(hash, len, name);
 
   /* Locate matching entry. */
-  j = (hash % table->size);
-  bucket = table->bucket;
-  for (entry = bucket[j]; entry != NULL; entry = entry->next) {
-    if (H_MATCH(entry, hash, (const char *)name, len)) {
+  size_t j = (hash % table->size);
+  h_entry_t** bucket = table->bucket;
+  for (h_entry_t* entry = bucket[j]; entry != NULL; entry = entry->next) {
+    if (H_MATCH(entry, hash, name, len)) {
       /* Get 'next' hash entry. */
-      if (entry->next) {
-        name = (const char *)entry->next->name;
+      const char* next_name;
+      if (entry->next != NULL) {
+        next_name = entry->next->name;
       } else {
-        name = (const char *)0;
-        n = table->size;
+        next_name = NULL;
+        size_t n = table->size;
         while (++j < n) {
           entry = bucket[j];
           if (entry) {
-            name = (const char *)entry->name;
+            next_name = entry->name;
             break;
           }
         }
       }
-      push_string_value(name);
+      push_string_value(next_name);
       return;
     }
   }
@@ -559,23 +548,21 @@ void Y_h_next(int nargs)
 
 void Y_h_stat(int nargs)
 {
-  Array *array;
-  h_entry_t *entry, **bucket;
-  h_table_t *table;
-  long *result;
-  size_t i, number, max_count=0, sum_count=0;
   if (nargs != 1) YError("h_stat takes exactly one argument");
-  table = get_table(sp);
-  number = table->number;
-  bucket = table->bucket;
-  array = YETI_PUSH_NEW_ARRAY_L(yeti_start_dimlist(number + 1));
-  result = array->value.l;
-  for (i = 0; i <= number; ++i) {
+  h_table_t* table = get_table(sp);
+  size_t number = table->number;
+  h_entry_t** bucket = table->bucket;
+  Array* array = YETI_PUSH_NEW_ARRAY_L(yeti_start_dimlist(number + 1));
+  long* result = array->value.l;
+  for (size_t i = 0; i <= number; ++i) {
     result[i] = 0L;
   }
-  for (i = 0; i < table->size; ++i) {
+  size_t max_count = 0;
+  size_t sum_count = 0;
+  size_t size = table->size;
+  for (size_t i = 0; i < size; ++i) {
     size_t count = 0;
-    for (entry = bucket[i]; entry != NULL; entry = entry->next) {
+    for (h_entry_t* entry = bucket[i]; entry != NULL; entry = entry->next) {
       ++count;
     }
     if (count <= number) {
@@ -595,26 +582,21 @@ void Y_h_stat(int nargs)
 #if YETI_MUST_DEFINE_AUTOLOAD_TYPE
 typedef struct autoload_t autoload_t;
 struct autoload_t {
-  int references;      /* reference counter */
-  Operations *ops;     /* virtual function table */
-  long ifile;          /* index into table of autoload files */
-  long isymbol;        /* global symtab index */
-  autoload_t *next;    /* linked list for each ifile */
+  int   references; /* reference counter */
+  Operations*  ops; /* virtual function table */
+  long       ifile; /* index into table of autoload files */
+  long     isymbol; /* global symtab index */
+  autoload_t* next; /* linked list for each ifile */
 };
 #endif /* YETI_MUST_DEFINE_AUTOLOAD_TYPE */
 
 void Y_h_evaluator(int nargs)
 {
+  /* Initialization of internals (digits must have lowest values). */
   static long default_eval_index = -1; /* index of default eval method in
                                           globTab */
   static unsigned char type[256];      /* array of integers to check
                                           consistency of a symbol's name */
-  h_table_t *table;
-  char *str;
-  long old_index;
-  int push_result;
-
-  /* Initialization of internals (digits must have lowest values). */
   if (default_eval_index < 0L) {
     int i;
     unsigned char value = 0;
@@ -635,18 +617,18 @@ void Y_h_evaluator(int nargs)
   }
 
   if (nargs < 1 || nargs > 2) YError("h_evaluator takes 1 or 2 arguments");
-  push_result =  ! yarg_subroutine();
-  table = get_table(sp - nargs + 1);
-  old_index = table->eval;
+  int push_result =  ! yarg_subroutine();
+  h_table_t* table = get_table(sp - nargs + 1);
+  long old_index = table->eval;
 
   if (nargs == 2) {
     long new_index = -1L;
-    Symbol *s = sp;
+    Symbol* s = sp;
     while (s->ops == &referenceSym) {
       s = &globTab[s->index];
     }
     if (s->ops == &dataBlockSym) {
-      Operations *ops = s->value.db->ops;
+      Operations* ops = s->value.db->ops;
       if (ops == &functionOps) {
         new_index = ((Function *)s->value.db)->code[0].index;
       } else if (ops == &builtinOps) {
@@ -654,10 +636,10 @@ void Y_h_evaluator(int nargs)
       } else if (ops == &auto_ops) {
         new_index = ((autoload_t *)s->value.db)->isymbol;
       } else if (ops == &stringOps) {
-        Array *a = (Array *)s->value.db;
+        Array* a = (Array *)s->value.db;
         if (a->type.dims == NULL) {
           /* got a scalar string */
-          unsigned char *q = (unsigned char *)a->value.q[0];
+          unsigned char* q = (unsigned char *)a->value.q[0];
           if (q == NULL) {
             /* nil symbol's name corresponds to default value */
             new_index = default_eval_index;
@@ -694,26 +676,23 @@ void Y_h_evaluator(int nargs)
     }
   }
   if (push_result) {
-    if (old_index >= 0L && old_index != default_eval_index) {
-      str = globalTable.names[old_index];
-    } else {
-      str = (char *)0;
-    }
+    char* str = (old_index >= 0L && old_index != default_eval_index) ?
+      globalTable.names[old_index] : NULL;
     push_string_value(str);
   }
 }
 
 /*---------------------------------------------------------------------------*/
 
-static void get_member(Symbol *owner, h_table_t *table, const char *name)
+static void get_member(Symbol* owner, h_table_t* table, const char* name)
 {
-  OpTable *ops;
-  h_entry_t *entry = h_find(table, name);
-  DataBlock *old = (owner->ops == &dataBlockSym) ? owner->value.db : NULL;
+  h_entry_t* entry = h_find(table, name);
+  DataBlock* old = (owner->ops == &dataBlockSym) ? owner->value.db : NULL;
+  OpTable* ops;
   owner->ops = &intScalar;     /* avoid clash in case of interrupts */
-  if (entry) {
+  if (entry != NULL) {
     if ((ops = entry->sym_ops) == &dataBlockSym) {
-      DataBlock *db = entry->sym_value.db;
+      DataBlock* db = entry->sym_value.db;
       owner->value.db = Ref(db);
     } else {
       owner->value = entry->sym_value;
@@ -731,14 +710,12 @@ static void get_member(Symbol *owner, h_table_t *table, const char *name)
 static int get_table_and_key(int nargs, h_table_t **table,
                              const char **keystr)
 {
-  Operand op;
-  Symbol *s, *stack;
-
-  stack = sp - nargs + 1;
+  Symbol* stack = sp - nargs + 1;
   if (nargs == 2) {
     /* e.g.: foo(table, "key") */
-    s = stack + 1; /* symbol for key */
+    Symbol* s = stack + 1; /* symbol for key */
     if (s->ops) {
+      Operand op;
       s->ops->FormOperand(s, &op);
       if (! op.type.dims && op.ops->typeID == T_STRING) {
         *table = get_table(stack);
@@ -757,32 +734,29 @@ static int get_table_and_key(int nargs, h_table_t **table,
   return -1;
 }
 
-static h_table_t *get_table(Symbol *stack)
+static h_table_t* get_table(Symbol* stack)
 {
-  DataBlock *db;
-  Symbol *sym = (stack->ops == &referenceSym) ? &globTab[stack->index] : stack;
+  Symbol* sym = (stack->ops == &referenceSym) ? &globTab[stack->index] : stack;
   if (sym->ops != &dataBlockSym || sym->value.db->ops != &hashOps)
     YError("expected hash table object");
-  db = sym->value.db;
+  DataBlock* db = sym->value.db;
   if (sym != stack) {
     /* Replace reference onto the stack (equivalent to the statement
        ReplaceRef(s); see ydata.c for actual code of this routine). */
     stack->value.db = Ref(db);
-    stack->ops = &dataBlockSym;     /* change ops only AFTER value updated */
+    stack->ops = &dataBlockSym; /* change ops only AFTER value updated */
   }
-  return (h_table_t *)db;
+  return (h_table_t*)db;
 }
 
-static void set_members(h_table_t *table, Symbol *stack, int nargs)
+static void set_members(h_table_t* table, Symbol* stack, int nargs)
 {
-  Operand op;
-  int i;
-  const char *name;
-
   if (nargs%2 != 0) YError("last key has no value");
-  for (i = 0; i < nargs; i += 2, stack += 2) {
+  for (int i = 0; i < nargs; i += 2, stack += 2) {
     /* Get key name. */
+    const char* name;
     if (stack->ops) {
+      Operand op;
       stack->ops->FormOperand(stack, &op);
       if (! op.type.dims && op.ops == &stringOps) {
         name = *(char **)op.value;
@@ -806,19 +780,17 @@ static void set_members(h_table_t *table, Symbol *stack, int nargs)
    aimed at the storage of Yorick DataBlock.  The hashing algorithm is taken
    from Tcl (which is 25-30% more efficient than Yorick's algorithm). */
 
-h_table_t *h_new(size_t number)
+static h_table_t* h_new(size_t number)
 {
-  size_t nbytes, size = 1;
-  h_table_t *table;
-
   /* Member SIZE of a hash table is always a power of 2, greater or
      equal 2*NUMBER (twice the number of entries in the table). */
+  size_t size = 1;
   while (size < number) {
     size <<= 1;
   }
   size <<= 1;
-  nbytes = size*sizeof(h_entry_t *);
-  table = h_malloc(sizeof(h_table_t));
+  size_t nbytes = size*sizeof(h_entry_t *);
+  h_table_t* table = h_malloc(sizeof(h_table_t));
   if (table == NULL) {
   enomem:
     h_error("insufficient memory for new hash table");
@@ -839,23 +811,20 @@ h_table_t *h_new(size_t number)
   return table;
 }
 
-void h_delete(h_table_t *table)
+static void h_delete(h_table_t* table)
 {
-  size_t i, size;;
-  h_entry_t *entry, **bucket;
-
   if (table != NULL) {
     if (table->new_size > table->size) {
       rehash(table);
     }
-    size = table->size;
-    bucket = table->bucket;
-    for (i = 0; i < size; ++i) {
-      entry = bucket[i];
+    size_t size = table->size;
+    h_entry_t** bucket = table->bucket;
+    for (size_t i = 0; i < size; ++i) {
+      h_entry_t* entry = bucket[i];
       while (entry) {
-        void *addr = entry;
+        void* addr = entry;
         if (entry->sym_ops == &dataBlockSym) {
-          DataBlock *db = entry->sym_value.db;
+          DataBlock* db = entry->sym_value.db;
           Unref(db);
         }
         entry = entry->next;
@@ -867,80 +836,80 @@ void h_delete(h_table_t *table)
   }
 }
 
-h_entry_t *h_find(h_table_t *table, const char *name)
+static h_entry_t* h_find(h_table_t* table, const char* name)
 {
-  size_t hash, len;
-  h_entry_t *entry;
+  if (name != NULL) {
+    /* Compute hash value. */
+    size_t hash, len;
+    HASH_STRING(hash, len, name);
 
-  /* Check key string and compute hash value. */
-  if (name == NULL) return NULL; /* not found */
-  HASH_STRING(hash, len, name);
+    /* Ensure consistency of the bucket. */
+    if (table->new_size > table->size) {
+      rehash(table);
+    }
 
-  /* Ensure consistency of the bucket. */
-  if (table->new_size > table->size) {
-    rehash(table);
-  }
-
-  /* Locate matching entry. */
-  for (entry = table->bucket[hash % table->size];
-       entry != NULL; entry = entry->next) {
-    if (H_MATCH(entry, hash, name, len)) return entry;
+    /* Locate matching entry. */
+    for (h_entry_t* entry = table->bucket[hash % table->size];
+         entry != NULL; entry = entry->next) {
+      if (H_MATCH(entry, hash, name, len)) {
+        return entry;
+      }
+    }
   }
 
   /* Not found. */
   return NULL;
 }
 
-int h_remove(h_table_t *table, const char *name)
+#ifdef H_REMOVE
+static int h_remove(h_table_t* table, const char* name)
 {
-  size_t hash, len, index;
-  h_entry_t *entry, *prev;
+  if (name != NULL) {
+    /* Compute hash value. */
+    size_t hash, len;
+    HASH_STRING(hash, len, name);
 
-  /* Check key string and compute hash value. */
-  if (name == NULL) return 0; /* not found */
-  HASH_STRING(hash, len, name);
-
-  /* Ensure consistency of the bucket. */
-  if (table->new_size > table->size) {
-    rehash(table);
-  }
-
-  /* Find the entry. */
-  prev = NULL;
-  index = hash % table->size;
-  entry = table->bucket[index];
-  while (entry != NULL) {
-    if (H_MATCH(entry, hash, name, len)) {
-      /* Delete the entry: (1) remove entry from chained list of entries in
-         its bucket, (2) unreference contents of entry, (3) free entry
-         memory. */
-      /*** CRITICAL CODE BEGIN ***/
-      if (prev != NULL) {
-        prev->next = entry->next;
-      } else {
-        table->bucket[index] = entry->next;
-      }
-      if (entry->sym_ops == &dataBlockSym) {
-        DataBlock *db = entry->sym_value.db;
-        Unref(db);
-      }
-      h_free(entry);
-      --table->number;
-      /*** CRITICAL CODE END ***/
-      return 1; /* entry found and deleted */
+    /* Ensure consistency of the bucket. */
+    if (table->new_size > table->size) {
+      rehash(table);
     }
-    prev = entry;
-    entry = entry->next;
+
+    /* Find the entry. */
+    h_entry_t* prev = NULL;
+    size_t index = hash % table->size;
+    h_entry_t* entry = table->bucket[index];
+    while (entry != NULL) {
+      if (H_MATCH(entry, hash, name, len)) {
+        /* Delete the entry: (1) remove entry from chained list of entries in
+           its bucket, (2) unreference contents of entry, (3) free entry
+           memory. */
+        /*** CRITICAL CODE BEGIN ***/ {
+          if (prev != NULL) {
+            prev->next = entry->next;
+          } else {
+            table->bucket[index] = entry->next;
+          }
+          if (entry->sym_ops == &dataBlockSym) {
+            DataBlock* db = entry->sym_value.db;
+            Unref(db);
+          }
+          h_free(entry);
+          --table->number;
+        } /*** CRITICAL CODE END ***/
+        return 1; /* entry found and deleted */
+      }
+      prev = entry;
+      entry = entry->next;
+    }
   }
-  return 0; /* not found */
+
+  /* Not found. */
+  return 0;
 }
+#endif
 
-int h_insert(h_table_t *table, const char *name, Symbol *sym)
+static int h_insert(h_table_t* table, const char* name, Symbol* sym)
 {
-  size_t hash, len, index;
-  h_entry_t *entry;
-  DataBlock *db;
-
   /* Check key string. */
   if (name == NULL) {
     h_error("invalid nil key name");
@@ -948,6 +917,7 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
   }
 
   /* Hash key. */
+  size_t hash, len;
   HASH_STRING(hash, len, name);
 
   /* Ensure consistency of the bucket. */
@@ -968,61 +938,63 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
     FetchLValue(sym->value.db, sym);
   }
 
+  /* Ensure that there are no pending signals before critical operation. */
+  if (p_signalling) {
+    p_abort();
+  }
+
   /* Replace contents of the entry with same key name if it already exists. */
-  for (entry = table->bucket[hash % table->size];
+  for (h_entry_t* entry = table->bucket[hash % table->size];
        entry != NULL; entry = entry->next) {
     if (H_MATCH(entry, hash, name, len)) {
-      /*** CRITICAL CODE BEGIN ***/
-      db = (entry->sym_ops == &dataBlockSym) ? entry->sym_value.db : NULL;
-      entry->sym_ops = &intScalar; /* avoid clash in case of interrupts */
-      Unref(db);
-      if (sym->ops == &dataBlockSym) {
-        db = sym->value.db;
-        entry->sym_value.db = Ref(db);
-      } else {
-        entry->sym_value = sym->value;
-      }
-      entry->sym_ops = sym->ops;   /* change ops only AFTER value updated */
-      /*** CRITICAL CODE END ***/
+      /*** CRITICAL CODE BEGIN ***/ {
+        DataBlock* db = (entry->sym_ops == &dataBlockSym) ?
+          entry->sym_value.db : NULL;
+        entry->sym_ops = &intScalar; /* avoid clash in case of interrupts */
+        Unref(db);
+        if (sym->ops == &dataBlockSym) {
+          db = sym->value.db;
+          entry->sym_value.db = Ref(db);
+        } else {
+          entry->sym_value = sym->value;
+        }
+        entry->sym_ops = sym->ops;   /* change ops only AFTER value updated */
+      } /*** CRITICAL CODE END ***/
       return 1; /* old entry replaced */
     }
   }
 
   /* Must create a new entry. */
-  if (((table->number + 1)<<1) > table->size) {
+  if (((table->number + 1) << 1) > table->size) {
     /* Must grow hash table bucket, i.e. "re-hash".  This is done in such a way
        that the bucket is always consistent. This is needed to be robust in
        case of interrupts (at most one entry could be lost in this case). */
-    h_entry_t **old_bucket, **new_bucket;
-    size_t size;
-    size_t nbytes;
-
-    size = table->size;
-    nbytes = size*sizeof(h_entry_t *);
-    old_bucket = table->bucket;
-    new_bucket = h_malloc(2*nbytes);
+    size_t size = table->size;
+    size_t nbytes = size*sizeof(h_entry_t*);
+    h_entry_t** old_bucket = table->bucket;
+    h_entry_t** new_bucket = h_malloc(2*nbytes);
     if (new_bucket == NULL) {
     not_enough_memory:
       h_error("insufficient memory to store new hash entry");
       return -1;
     }
     memcpy(new_bucket, old_bucket, nbytes);
-    memset((char *)new_bucket + nbytes, 0, nbytes);
-    /*** CRITICAL CODE BEGIN ***/
-    table->bucket = new_bucket;
-    table->new_size = 2*table->size;
-    h_free(old_bucket);
-    /*** CRITICAL CODE END ***/
+    memset((char*)new_bucket + nbytes, 0, nbytes);
+    /*** CRITICAL CODE BEGIN ***/ {
+      table->bucket = new_bucket;
+      table->new_size = 2*table->size;
+      h_free(old_bucket);
+    } /*** CRITICAL CODE END ***/
     rehash(table);
   }
 
   /* Create new entry. */
-  entry = h_malloc(OFFSET(h_entry_t, name) + 1 + len);
+  h_entry_t* entry = h_malloc(OFFSET(h_entry_t, name) + 1 + len);
   if (entry == NULL) goto not_enough_memory;
   memcpy(entry->name, name, len+1);
   entry->hash = hash;
   if (sym->ops == &dataBlockSym) {
-    db = sym->value.db;
+    DataBlock* db = sym->value.db;
     entry->sym_value.db = Ref(db);
   } else {
     entry->sym_value = sym->value;
@@ -1030,40 +1002,47 @@ int h_insert(h_table_t *table, const char *name, Symbol *sym)
   entry->sym_ops = sym->ops;
 
   /* Insert new entry. */
-  index = hash % table->size;
-  /*** CRITICAL CODE BEGIN ***/
-  entry->next = table->bucket[index];
-  table->bucket[index] = entry;
-  ++table->number;
-  /*** CRITICAL CODE END ***/
+  size_t index = hash % table->size;
+  /*** CRITICAL CODE BEGIN ***/ {
+    entry->next = table->bucket[index];
+    table->bucket[index] = entry;
+    ++table->number;
+  } /*** CRITICAL CODE END ***/
   return 0; /* a new entry was created */
 }
 
 /* This function rehash a recently grown hash table.  The complications come
-   from the needs to be robust with respet to interruptions so that the task
+   from the needs to be robust with respect to interruptions so that the task
    can be interrupted at (almost) any time and resumed later with a minimun
-   risk to loose entries. */
-static void rehash(h_table_t *table)
+   risk to loose entries.  In fact since rehashing can be done in-place, the
+   only critical part is when an entry is moved. This function may be called to
+   check whether all entries were in correct position (0 is returned in that
+   case).  So for most usages, it is important to only call this function if it
+   is detected that rehashing is needed (e.g. by comparing the current and new
+   size of the bucket). */
+static int rehash(h_table_t* table)
 {
-  h_entry_t **bucket, *prev, *entry;
-  size_t i, j, new_size, old_size;
-
-  if (table->new_size > table->size) {
-    bucket = table->bucket;
-    old_size = table->size;
-    new_size = table->new_size;
-    for (i = 0; i < old_size; ++i) {
-      prev = NULL;
-      entry = bucket[i];
-      while (entry != NULL) {
-        /* Compute index of the entry in the new bucket. */
-        j = entry->hash % new_size;
-        if (j == i) {
-          /* No change in entry location, just move to next entry in bucket. */
-          prev = entry;
-          entry = entry->next;
-        } else {
-          /*** CRITICAL CODE BEGIN ***/
+  /* Ensure that there are no pending signals before this critical
+     operation. */
+  if (p_signalling) {
+    p_abort();
+  }
+  int flag = 0;
+  h_entry_t** bucket = table->bucket;
+  size_t old_size = table->size;
+  size_t new_size = table->new_size;
+  for (size_t i = 0; i < old_size; ++i) {
+    h_entry_t* prev = NULL;
+    h_entry_t* entry = bucket[i];
+    while (entry != NULL) {
+      /* Compute index of the entry in the new bucket. */
+      size_t j = entry->hash % new_size;
+      if (j == i) {
+        /* No change in entry location, just move to next entry in bucket. */
+        prev = entry;
+        entry = entry->next;
+      } else {
+        /*** CRITICAL CODE BEGIN ***/ {
           /* Remove entry from its bucket. */
           if (prev == NULL) {
             bucket[i] = entry->next;
@@ -1073,12 +1052,13 @@ static void rehash(h_table_t *table)
           /* Insert entry in its new bucket. */
           entry->next = bucket[j];
           bucket[j] = entry;
-          /*** CRITICAL CODE END ***/
+        } /*** CRITICAL CODE END ***/
           /* Move to next entry in former bucket. */
-          entry = ((prev == NULL) ? bucket[i] : prev->next);
-        }
+        entry = ((prev == NULL) ? bucket[i] : prev->next);
+        flag = 1;
       }
     }
-    table->size = new_size;
   }
+  table->size = new_size;
+  return flag;
 }
