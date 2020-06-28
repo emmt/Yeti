@@ -26,6 +26,16 @@
 #include "config.h"
 #include "yeti.h"
 
+#if defined(__GNUC__) && __GNUC__ > 1
+extern void YError(const char* msg) __attribute__ ((noreturn));
+static void unexpected_keyword_argument() __attribute__ ((noreturn));
+#endif
+
+static void unexpected_keyword_argument()
+{
+  YError("unexpected keyword argument");
+}
+
 /* Shall we use faster complex division? (depends Yorick version) */
 #if (YORICK_VERSION_MAJOR >= 2)
 # define USE_FASTER_DIVIDE_Z 0
@@ -255,7 +265,7 @@ void Y_mem_peek(int argc)
 
 static void* get_address(Symbol* s)
 {
-  if (! s->ops) YError("unexpected keyword argument");
+  if (s->ops == NULL) unexpected_keyword_argument();
   Operand op;
   s->ops->FormOperand(s, &op);
   if (op.type.dims == (Dimension*)0) {
@@ -329,43 +339,43 @@ static void build_dimlist(Symbol* stack, int nArgs)
    Yorick source code -- required to avoid plugin clash. */
 static Operand* form_operand_db(Symbol* owner, Operand* op)
 {
-  DataBlock* db= owner->value.db;
-  Operations* ops= db->ops;
-  op->owner= owner;
+  DataBlock* db = owner->value.db;
+  Operations* ops = db->ops;
+  op->owner = owner;
   if (ops->isArray) {
     Array* array= (Array*)db;
-    op->ops= ops;
-    op->references= array->references;
-    op->type.base= array->type.base;
-    op->type.dims= array->type.dims;
-    op->type.number= array->type.number;
-    op->value= array->value.c;
-  } else if (ops==&lvalueOps) {
-    LValue* lvalue= (LValue*)db;
-    StructDef* base= lvalue->type.base;
+    op->ops         = ops;
+    op->references  = array->references;
+    op->type.base   = array->type.base;
+    op->type.dims   = array->type.dims;
+    op->type.number = array->type.number;
+    op->value       = array->value.c;
+  } else if (ops == &lvalueOps) {
+    LValue* lvalue = (LValue*)db;
+    StructDef* base = lvalue->type.base;
     if (lvalue->strider || base->model) {
-      Array* array= FetchLValue(lvalue, owner);
-      op->ops= array->ops;
-      op->references= array->references;
-      op->type.base= array->type.base;
-      op->type.dims= array->type.dims;
-      op->type.number= array->type.number;
-      op->value= array->value.c;
+      Array* array = FetchLValue(lvalue, owner);
+      op->ops         = array->ops;
+      op->references  = array->references;
+      op->type.base   = array->type.base;
+      op->type.dims   = array->type.dims;
+      op->type.number = array->type.number;
+      op->value       = array->value.c;
     } else {
-      op->ops= base->dataOps;
-      op->references= 1;     /* NEVER try to use this as result */
-      op->type.base= base;
-      op->type.dims= lvalue->type.dims;
-      op->type.number= lvalue->type.number;
-      op->value= lvalue->address.m;
+      op->ops         = base->dataOps;
+      op->references  = 1;     /* NEVER try to use this as result */
+      op->type.base   = base;
+      op->type.dims   = lvalue->type.dims;
+      op->type.number = lvalue->type.number;
+      op->value       = lvalue->address.m;
     }
   } else {
-    op->ops= ops;
-    op->references= db->references;
-    op->type.base= 0;
-    op->type.dims= 0;
-    op->type.number= 0;
-    op->value= db;
+    op->ops         = ops;
+    op->references  = db->references;
+    op->type.base   = 0;
+    op->type.dims   = 0;
+    op->type.number = 0;
+    op->value       = db;
   }
   return op;
 }
@@ -416,16 +426,17 @@ void Y_get_encoding(int argc)
                 P_FLOAT_LAYOUT, P_DOUBLE_LAYOUT}}
   };
   const int ndb = sizeof(db)/sizeof(db[0]);
-
-  if (argc!=1) YError("get_encoding takes exactly one argument");
+  if (argc != 1) YError("get_encoding takes exactly one argument");
   const char* name = YGetString(sp);
   if (name != NULL) {
     long* result = YETI_PUSH_NEW_L(yeti_start_dimlist(32));
-    int i, c = name[0];
-    for (i=0 ; i<ndb ; ++i) {
-      if (c==db[i].name[0] && ! strcmp(name, db[i].name)) {
+    int c = name[0];
+    for (int i = 0; i < ndb; ++i) {
+      if (db[i].name[0] == c && strcmp(db[i].name, name) == 0) {
         long* layout = db[i].layout;
-        for (i=0 ; i<32 ; ++i) result[i] = layout[i];
+        for (int j = 0; j < 32; ++j) {
+          result[j] = layout[j];
+        }
         return;
       }
     }
@@ -438,79 +449,86 @@ void Y_get_encoding(int argc)
 
 void Y_machine_constant(int argc)
 {
-
   if (argc!=1) YError("machine_constant: takes exactly one argument");
   const char* name = YGetString(sp);
   double dval;
   float fval;
   long lval;
-  if (name[0] == 'D') {
-    if (name[1] == 'B' && name[2] == 'L' && name[3] == '_') {
-#define _(S,V) if (strcmp(#S, name + 4) == 0) { V = DBL_##S; goto push_##V; }
+  if (name != NULL && name[0] == 'D' && name[1] == 'B' && name[2] == 'L'
+      && name[3] == '_') {
+#define _(S,V) do {                             \
+    if (strcmp(#S, name + 4) == 0) {            \
+      V = DBL_##S;                              \
+      goto push_##V;                            \
+    }                                           \
+  } while (0)
 #if defined(DBL_EPSILON)
-      _(EPSILON, dval)
+    _(EPSILON, dval);
 #endif
 #if defined(DBL_MIN)
-      _(MIN, dval)
+    _(MIN, dval);
 #endif
 #if defined(DBL_MAX)
-      _(MAX, dval)
+    _(MAX, dval);
 #endif
 #if defined(DBL_MIN_EXP)
-      _(MIN_EXP, lval)
+    _(MIN_EXP, lval);
 #endif
 #if defined(DBL_MAX_EXP)
-      _(MAX_EXP, lval)
+    _(MAX_EXP, lval);
 #endif
 #if defined(DBL_MIN_10_EXP)
-      _(MIN_10_EXP, lval)
+    _(MIN_10_EXP, lval);
 #endif
 #if defined(DBL_MAX_10_EXP)
-      _(MAX_10_EXP, lval)
+    _(MAX_10_EXP, lval);
 #endif
 #if defined(DBL_MANT_DIG)
-      _(MANT_DIG, lval)
+    _(MANT_DIG, lval);
 #endif
 #if defined(DBL_DIG)
-      _(DIG, lval)
+    _(DIG, lval);
 #endif
 #undef _
-    }
-  } else if (name[0] == 'F') {
-    if (name[1] == 'L' && name[2] == 'T' && name[3] == '_') {
-#define _(S,V) if (! strcmp(#S, name + 4)) { V = FLT_##S; goto push_##V; }
+  } else if (name != NULL && name[0] == 'F' && name[1] == 'L' && name[2] == 'T'
+             && name[3] == '_') {
+#define _(S,V) do {                             \
+    if (strcmp(#S, name + 4) == 0) {            \
+      V = FLT_##S;                              \
+      goto push_##V;                            \
+    }                                           \
+  } while (0)
 #if defined(FLT_EPSILON)
-      _(EPSILON, fval)
+    _(EPSILON, fval);
 #endif
 #if defined(FLT_MIN)
-      _(MIN, fval)
+    _(MIN, fval);
 #endif
 #if defined(FLT_MAX)
-      _(MAX, fval)
+    _(MAX, fval);
 #endif
 #if defined(FLT_MIN_EXP)
-      _(MIN_EXP, lval)
+    _(MIN_EXP, lval);
 #endif
 #if defined(FLT_MAX_EXP)
-      _(MAX_EXP, lval)
+    _(MAX_EXP, lval);
 #endif
 #if defined(FLT_MIN_10_EXP)
-      _(MIN_10_EXP, lval)
+    _(MIN_10_EXP, lval);
 #endif
 #if defined(FLT_MAX_10_EXP)
-      _(MAX_10_EXP, lval)
+    _(MAX_10_EXP, lval);
 #endif
 #if defined(FLT_RADIX)
-      _(RADIX, lval)
+    _(RADIX, lval);
 #endif
 #if defined(FLT_MANT_DIG)
-      _(MANT_DIG, lval)
+    _(MANT_DIG, lval);
 #endif
 #if defined(FLT_DIG)
-      _(DIG, lval)
+    _(DIG, lval);
 #endif
 #undef _
-    }
   }
   YError("unknown name of machine constant");
   return;
