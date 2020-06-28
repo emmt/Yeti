@@ -122,7 +122,7 @@ void Y_tmpfile(int argc)
   if (argc != 1) y_error("tmpfile takes exaclty one argument");
   src = ygets_q(0);
   len = (src && src[0] ? strlen(src) : 0);
-  if (len < 6 || strcmp(src + (len - 6), tail)) {
+  if (len < 6 || strcmp(src + (len - 6), tail) != 0) {
     pad = 1;
     size = len + 7;
   } else {
