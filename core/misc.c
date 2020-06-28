@@ -604,26 +604,23 @@ static void smooth_single(double* x, double p25, double p50, double p75,
 
 void Y_smooth3(int argc)
 {
-  Operand op;
-  double* x = NULL;
-  long n1, n2, n3;
-  int single = 0, is_complex;
-  long which = 0; /* avoid compiler warning */
-  Symbol* stack;
-  Dimension* dims;
+  /* Parse arguments. */
   int nparsed = 0;
   double p25 = 0.25, p50 = 0.50, p75 = 0.75;
-
-  for (stack=sp-argc+1 ; stack<=sp ; ++stack) {
-    if (stack->ops) {
-      /* non-keyword argument */
+  int single = 0;
+  long which = 0;
+  Operand op;
+  for (Symbol* stack = sp - argc + 1; stack <= sp; ++stack) {
+    if (stack->ops != NULL) {
+      /* Positional argument. */
       if (++nparsed == 1) {
         stack->ops->FormOperand(stack, &op);
       } else {
         YError("too many arguments");
+        return;
       }
     } else {
-      /* keyword argument */
+      /* Keyword argument. */
       const char* keyword = globalTable.names[stack->index];
       ++stack;
       if (keyword[0] == 'c' && keyword[1] == 0) {
@@ -632,36 +629,35 @@ void Y_smooth3(int argc)
           p25 = 0.5*(1.0 - p50);
           p75 = 0.5*(1.0 + p50);
         }
-      } else if (keyword[0] == 'w' && ! strcmp(keyword, "which")) {
+      } else if (keyword[0] == 'w' && strcmp(keyword, "which") == 0) {
         if (YNotNil(stack)) {
           which = YGetInteger(stack);
           single = 1;
         }
       } else {
         YError("unknown keyword");
+        return;
       }
     }
   }
-  if (nparsed != 1) YError("bad number of arguments");
+  if (nparsed != 1) {
+    YError("bad number of arguments");
+    return;
+  }
 
   /* Get input array. */
-  is_complex = (op.ops->typeID == T_COMPLEX);
-  n1 = (is_complex ? 2*op.type.number : op.type.number);
-  stack = op.owner;
-  switch (op.ops->typeID) {
-  case T_CHAR:
-  case T_SHORT:
-  case T_INT:
-  case T_LONG:
-  case T_FLOAT:
+  int type = op.ops->typeID;
+  int is_complex = (type == T_COMPLEX);
+  long ntot = (is_complex ? 2*op.type.number : op.type.number);
+  double* x = NULL;
+  Symbol* stack = op.owner;
+  Dimension* dims;
+  if (type <= T_FLOAT) {
     /* Convert input in a new array of double's. */
     op.ops->ToDouble(&op);
     x = op.value;
     dims = op.type.dims;
-    break;
-
-  case T_DOUBLE:
-  case T_COMPLEX:
+  } else if (type == T_DOUBLE || type == T_COMPLEX) {
     /* If input array has references (is not temporary), make a new copy. */
     if (op.references) {
       Array* array = NewArray((is_complex ? &complexStruct : &doubleStruct),
@@ -669,33 +665,39 @@ void Y_smooth3(int argc)
       PushDataBlock(array);
       x = array->value.d;
       dims = array->type.dims;
-      memcpy(x, op.value, n1*sizeof(double));
+      memcpy(x, op.value, ntot*sizeof(double));
       PopTo(stack);
     } else {
       x = op.value;
       dims = op.type.dims;
     }
-    break;
-
-  default:
+  } else {
     YError("bad data type for input array");
+    return;
   }
-  while (sp != stack) Drop(1);  /* left result on top of the stack */
+  while (sp > stack) {
+    Drop(1);  /* left result on top of the stack */
+  }
 
   /* Apply operator. */
-  n3 = 1; /* product of dimensions after current one */
+  long n1 = ntot;
+  long n3 = 1; /* product of dimensions after current one */
   if (single) {
     /* Apply operator along a single dimension. */
     Dimension* tmp = dims;
-    long rank=0;
-    while (tmp) {
+    long rank = 0;
+    while (tmp != NULL) {
       ++rank;
       tmp = tmp->next;
     }
-    if (which <= 0) which += rank;
-    if (which <= 0 || which > rank) YError("WHICH is out of range");
-    while (dims) {
-      n2 = dims->number;
+    if (which <= 0) {
+      which += rank;
+    }
+    if (which < 1 || which > rank) {
+      YError("WHICH is out of range");
+    }
+    while (dims != NULL) {
+      long n2 = dims->number;
       n1 /= n2;
       if (rank-- == which) {
         smooth_single(x, p25, p50, p75, n1, n2, n3);
@@ -706,8 +708,8 @@ void Y_smooth3(int argc)
     }
   } else {
     /* Apply operator to every dimensions. */
-    while (dims) {
-      n2 = dims->number;
+    while (dims != NULL) {
+      long n2 = dims->number;
       n1 /= n2;
       smooth_single(x, p25, p50, p75, n1, n2, n3);
       n3 *= n2;
@@ -721,14 +723,13 @@ static void smooth_single(double* x, double p25, double p50, double p75,
 {
   if (n2 >= 2) {
     long i, stride = n1, n = n1*n2;
-    double x1, x2, x3;
     if (stride == 1) {
-      for ( ; --n3 >= 0; x+=n) {
-        x2 = x[0];
-        x3 = x[1];
+      for ( ; --n3 >= 0; x += n) {
+        double x2 = x[0];
+        double x3 = x[1];
         x[0] = p75*x2 + p25*x3;
         for (i = 2; i < n; ++i) {
-          x1 = x2;
+          double x1 = x2;
           x2 = x3;
           x3 = x[i];
           x[i - 1] = p50*x2 + p25*(x1 + x3);
@@ -739,11 +740,11 @@ static void smooth_single(double* x, double p25, double p50, double p75,
       long p = n - stride;
       for ( ; --n3 >= 0; x += p) {
         for (n1 = stride; --n1 >= 0; ++x) {
-          x2 = x[0];
-          x3 = x[stride];
+          double x2 = x[0];
+          double x3 = x[stride];
           x[0] = p75*x2 + p25*x3;
           for (i = 2*stride; i < n; i += stride) {
-            x1 = x2;
+            double x1 = x2;
             x2 = x3;
             x3 = x[i];
             x[i - stride] = p50*x2 + p25*(x1 + x3);
