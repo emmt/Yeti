@@ -135,8 +135,8 @@ static void set_members(h_table_t* obj, Symbol* stack, int nargs);
 /*----- Parse arguments STACK[0]..STACK[NARGS-1] as key-value pairs to
         store in hash table OBJ. */
 
-static int get_table_and_key(int nargs, h_table_t **table,
-                            const char **keystr);
+static int get_table_and_key(int nargs, h_table_t** table,
+                            const char** keystr);
 
 static void get_member(Symbol* owner, h_table_t* table, const char* name);
 /*----- Replace stack symbol OWNER by the contents of entry matching NAME
@@ -215,9 +215,7 @@ static void EvalH(Operand* op)
   if (table->eval >= 0L) {
     /* This hash table implement its own eval method. */
     Symbol* s = &globTab[table->eval];
-    while (s->ops == &referenceSym) {
-      s = &globTab[s->index];
-    }
+    YETI_SOLVE_REFERENCE(s);
     Operations* oper;
     DataBlock* db = s->value.db; /* correctness checked below */
     if (s->ops != &dataBlockSym || db == NULL
@@ -308,7 +306,7 @@ static void push_string_value(const char* value);
 
 static int is_nil(Symbol* s)
 {
-  while (s->ops == &referenceSym) s = &globTab[s->index];
+  YETI_SOLVE_REFERENCE(s);
   return (s->ops == &dataBlockSym && s->value.db == &nilDB);
 }
 
@@ -322,7 +320,7 @@ void Y_is_hash(int nargs)
 {
   if (nargs != 1) YError("is_hash takes exactly one argument");
   int result;
-  Symbol* s = YETI_DEREF_SYMBOL(sp);
+  Symbol* s = YETI_DEREFERENCE_SYMBOL(sp);
   if (s->ops == &dataBlockSym && s->value.db->ops == &hashOps) {
     if (((h_table_t*)s->value.db)->eval >= 0L) {
       result = 2;
@@ -450,7 +448,7 @@ void Y_h_pop(int nargs)
 void Y_h_number(int nargs)
 {
   if (nargs != 1) YError("h_number takes exactly one argument");
-  Symbol* s = YETI_DEREF_SYMBOL(sp);
+  Symbol* s = YETI_DEREFERENCE_SYMBOL(sp);
   if (s->ops != &dataBlockSym || s->value.db->ops != &hashOps) {
     YError("inexpected non-hash table argument");
   }
@@ -624,22 +622,20 @@ void Y_h_evaluator(int nargs)
   if (nargs == 2) {
     long new_index = -1L;
     Symbol* s = sp;
-    while (s->ops == &referenceSym) {
-      s = &globTab[s->index];
-    }
+    YETI_SOLVE_REFERENCE(s);
     if (s->ops == &dataBlockSym) {
       Operations* ops = s->value.db->ops;
       if (ops == &functionOps) {
-        new_index = ((Function *)s->value.db)->code[0].index;
+        new_index = ((Function*)s->value.db)->code[0].index;
       } else if (ops == &builtinOps) {
-        new_index = ((BIFunction *)s->value.db)->index;
+        new_index = ((BIFunction*)s->value.db)->index;
       } else if (ops == &auto_ops) {
-        new_index = ((autoload_t *)s->value.db)->isymbol;
+        new_index = ((autoload_t*)s->value.db)->isymbol;
       } else if (ops == &stringOps) {
-        Array* a = (Array *)s->value.db;
+        Array* a = (Array*)s->value.db;
         if (a->type.dims == NULL) {
           /* got a scalar string */
-          unsigned char* q = (unsigned char *)a->value.q[0];
+          unsigned char* q = (unsigned char*)a->value.q[0];
           if (q == NULL) {
             /* nil symbol's name corresponds to default value */
             new_index = default_eval_index;
@@ -650,7 +646,7 @@ void Y_h_evaluator(int nargs)
               int c, i = 0;
               for (;;) {
                 if ((c = q[++i]) == 0) {
-                  new_index = Globalize((char *)q, i);
+                  new_index = Globalize((char*)q, i);
                   break;
                 }
                 if (! type[c]) {
@@ -707,8 +703,8 @@ static void get_member(Symbol* owner, h_table_t* table, const char* name)
 
 /* get args from the top of the stack: first arg is hash table, second arg
    should be key name or keyword followed by third nil arg */
-static int get_table_and_key(int nargs, h_table_t **table,
-                             const char **keystr)
+static int get_table_and_key(int nargs, h_table_t** table,
+                             const char** keystr)
 {
   Symbol* stack = sp - nargs + 1;
   if (nargs == 2) {
@@ -719,7 +715,7 @@ static int get_table_and_key(int nargs, h_table_t **table,
       s->ops->FormOperand(s, &op);
       if (! op.type.dims && op.ops->typeID == T_STRING) {
         *table = get_table(stack);
-        *keystr = *(char **)op.value;
+        *keystr = *(char**)op.value;
         return 0;
       }
     }
@@ -736,7 +732,7 @@ static int get_table_and_key(int nargs, h_table_t **table,
 
 static h_table_t* get_table(Symbol* stack)
 {
-  Symbol* sym = (stack->ops == &referenceSym) ? &globTab[stack->index] : stack;
+  Symbol* sym = YETI_DEREFERENCE_SYMBOL(stack);
   if (sym->ops != &dataBlockSym || sym->value.db->ops != &hashOps)
     YError("expected hash table object");
   DataBlock* db = sym->value.db;
@@ -759,7 +755,7 @@ static void set_members(h_table_t* table, Symbol* stack, int nargs)
       Operand op;
       stack->ops->FormOperand(stack, &op);
       if (! op.type.dims && op.ops == &stringOps) {
-        name = *(char **)op.value;
+        name = *(char**)op.value;
       } else {
         name = NULL;
       }
@@ -789,7 +785,7 @@ static h_table_t* h_new(size_t number)
     size <<= 1;
   }
   size <<= 1;
-  size_t nbytes = size*sizeof(h_entry_t *);
+  size_t nbytes = size*sizeof(h_entry_t*);
   h_table_t* table = h_malloc(sizeof(h_table_t));
   if (table == NULL) {
   enomem:
@@ -926,12 +922,7 @@ static int h_insert(h_table_t* table, const char* name, Symbol* sym)
   }
 
   /* Prepare symbol for storage. */
-  if (sym->ops == &referenceSym) {
-    /* We do not need to call ReplaceRef because the referenced symbol will
-       be properly inserted into the hash table and the stack symbol will
-       be left unchanged. */
-    sym = &globTab[sym->index];
-  }
+  YETI_SOLVE_REFERENCE(sym);
   if (sym->ops == &dataBlockSym && sym->value.db->ops == &lvalueOps) {
     /* Symbol is an LValue, e.g. part of an array, we fetch (make a private
        copy of) the data to release the link on the total array. */

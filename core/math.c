@@ -75,15 +75,15 @@ extern double hypot(double, double);
 
 /* Some functions and definitions stolen from Yorick std0.c and ops0.c
    in order to not use 'private' Yorick API. */
-typedef void looper_t(double *dst, const double *src, const long n);
-static void *build_result(Operand *op, StructDef *base);
-static void unary_worker(int nArgs, looper_t *DLooper, looper_t *ZLooper);
-static void pop_to_d(Symbol *s);
+typedef void looper_t(double* dst, const double* src, const long n);
+static void* build_result(Operand* op, StructDef* base);
+static void unary_worker(int nArgs, looper_t* DLooper, looper_t* ZLooper);
+static void pop_to_d(Symbol* s);
 
 /* same as PopToD in ops0.c */
-static void pop_to_d(Symbol *s)
+static void pop_to_d(Symbol* s)
 {
-  Array *array = (Array *)sp->value.db;
+  Array* array = (Array*)sp->value.db;
   PopTo(s);
   if (s->ops==&dataBlockSym && !array->type.dims) {
     s->ops= &doubleScalar;
@@ -93,12 +93,12 @@ static void pop_to_d(Symbol *s)
 }
 
 /* similar to BuildResultU in ops0.c */
-static void *build_result(Operand *op, StructDef *base)
+static void* build_result(Operand* op, StructDef* base)
 {
   if (! op->references && op->type.base == base) {
     /* similar to PushCopy in ydata.c */
-    Symbol *stack = sp + 1;
-    Symbol *s = op->owner;
+    Symbol* stack = sp + 1;
+    Symbol* s = op->owner;
     int isDB = (s->ops == &dataBlockSym);
     stack->ops = s->ops;
     if (isDB) stack->value.db = Ref(s->value.db);
@@ -106,11 +106,11 @@ static void *build_result(Operand *op, StructDef *base)
     sp = stack; /* sp updated AFTER new stack element intact */
     return (isDB ? op->value : &sp->value);
   } else {
-    return (void *)(((Array *)(PushDataBlock(NewArray(base, op->type.dims))))->value.c);
+    return (void*)(((Array*)(PushDataBlock(NewArray(base, op->type.dims))))->value.c);
   }
 }
 
-static void unary_worker(int nArgs, looper_t *DLooper, looper_t *ZLooper)
+static void unary_worker(int nArgs, looper_t* DLooper, looper_t* ZLooper)
 {
   Operand op;
   int promoteID;
@@ -132,12 +132,12 @@ static void unary_worker(int nArgs, looper_t *DLooper, looper_t *ZLooper)
 
 /* ----- sinc(x) = sin(PI*x)/PI/x ----- */
 
-static void sincDLoop(double *dst, const double *src, const long n);
-static void sincZLoop(double *dst, const double *src, const long n) ;
+static void sincDLoop(double* dst, const double* src, const long n);
+static void sincZLoop(double* dst, const double* src, const long n) ;
 
 void Y_sinc(int nArgs) { unary_worker(nArgs, &sincDLoop, &sincZLoop); }
 
-static void sincDLoop(double *dst, const double *src, const long n)
+static void sincDLoop(double* dst, const double* src, const long n)
 {
 #if NORMALIZED_SINC
   const double pi = PI;
@@ -158,7 +158,7 @@ static void sincDLoop(double *dst, const double *src, const long n)
   }
 }
 
-static void sincZLoop(double *dst, const double *src, const long n)
+static void sincZLoop(double* dst, const double* src, const long n)
 {
 #if NORMALIZED_SINC
   const double pi = PI;
@@ -204,31 +204,31 @@ extern BuiltIn Y_arc;
 
 void Y_arc(int nArgs)
 {
-  Operand op;
-  int promoteID;
-  long number, i;
   if (nArgs != 1) YError("arc takes exactly one argument");
-  if (! sp->ops) YError("unexpected keyword");
+  if (sp->ops == NULL) YError("unexpected keyword");
+  Operand op;
   sp->ops->FormOperand(sp, &op);
-  promoteID = op.ops->promoteID;
+  int promoteID = op.ops->promoteID;
   if (promoteID == T_DOUBLE) {
     const double rad = TWO_PI;
     const double scl = ONE_OVER_TWO_PI;
-    double *x, *y;
-    x = op.value;
-    y = build_result(&op, &doubleStruct);
-    number = op.type.number;
-    for (i=0 ; i<number ; ++i) y[i] = x[i] - rad*round(scl*x[i]);
+    double* x = op.value;
+    double* y = build_result(&op, &doubleStruct);
+    long number = op.type.number;
+    for (long i = 0; i < number; ++i) {
+      y[i] = x[i] - rad*round(scl*x[i]);
+    }
     pop_to_d(sp - 2);
   } else if (promoteID <= T_FLOAT) {
     const float rad = JOIN(TWO_PI,F);
     const float scl = JOIN(ONE_OVER_TWO_PI,F);
-    float *x, *y;
     if (promoteID != T_FLOAT) op.ops->ToFloat(&op);
-    x = op.value;
-    y = build_result(&op, &floatStruct);
-    number = op.type.number;
-    for (i=0 ; i<number ; ++i) y[i] = x[i] - rad*roundf(scl*x[i]);
+    float* x = op.value;
+    float* y = build_result(&op, &floatStruct);
+    long number = op.type.number;
+    for (long i = 0; i < number; ++i) {
+      y[i] = x[i] - rad*roundf(scl*x[i]);
+    }
     PopTo(sp - 2);
   } else {
     YError("expecting non-complex numeric argument");

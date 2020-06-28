@@ -29,8 +29,16 @@ extern BuiltIn Y_sparse_matrix, Y_is_sparse_matrix;
 extern BuiltIn Y_mvmult;
 
 #if defined(__GNUC__) && __GNUC__ > 1
-extern void YError(const char *msg) __attribute__ ((noreturn));
+extern void YError(const char* msg) __attribute__ ((noreturn));
+static void unexpected_keyword_argument() __attribute__ ((noreturn));
 #endif
+
+static void unexpected_keyword_argument()
+{
+  YError("unexpected keyword argument");
+}
+
+#define ROUND_UP(a,b) ((((a) + (b) - 1)/(b))*(b))
 
 /*--------------------------------------------------------------------------*/
 /* IMPLEMENTATION OF SPARSE MATRICES AS OPAQUE YORICK OBJECTS */
@@ -44,8 +52,8 @@ extern BinaryOp AssignX, MatMultX;
 extern UnaryOp EvalX, SetupX, PrintX;
 static MemberOp sparse_get_member;
 static UnaryOp sparse_print;
-static void sparse_free(void *addr);  /* ******* Use Unref(obj) ******* */
-static void sparse_eval(Operand *op);
+static void sparse_free(void* addr);  /* ******* Use Unref(obj) ******* */
+static void sparse_eval(Operand* op);
 
 Operations sparseOps = {
   &sparse_free, T_OPAQUE, 0, /* promoteID = */T_STRING/* means illegal */,
@@ -79,23 +87,25 @@ typedef struct index index_t;
 typedef struct sparse sparse_t;
 
 struct index {
-  size_t  nelem;   /* number of elements in indexed array */
-  size_t  ndims;   /* number of dimensions in DIMLIST */
-  size_t *dimlist; /* list of dimensions */
-  size_t *indices; /* indices of non-zero elements along this dimension */
+  size_t    nelem; /* number of elements in indexed array */
+  size_t    ndims; /* number of dimensions in DIMLIST */
+  size_t* dimlist; /* list of dimensions */
+  size_t* indices; /* indices of non-zero elements along this dimension */
 };
 
+/* A sparse matrix is stored in sparse compressed coordinate (COO) format. */
 struct sparse {
-  int references;       /* reference counter */
-  Operations *ops;      /* virtual function table */
-  size_t    number;     /* number of non-zero elements */
-  index_t   row, col;   /* indices for rows / colums of non zero elements */
-  void     *coefs;      /* non-zero elements of the sparse matrix */
+  int  references; /* reference counter */
+  Operations* ops; /* virtual function table */
+  size_t   number; /* number of non-zero elements */
+  index_t     row; /* row indices of structural non-zero elements */
+  index_t     col; /* column indices of structural non-zero elements */
+  void*     coefs; /* structural non-zero elements of the sparse matrix */
 };
 
-static void sparse_print(Operand *op)
+static void sparse_print(Operand* op)
 {
-  sparse_t *obj = (sparse_t *)op->value;
+  sparse_t* obj = (sparse_t*)op->value;
   char line[80];
   ForceNewline();
   PrintFunc("Object of type: ");
@@ -105,54 +115,52 @@ static void sparse_print(Operand *op)
   ForceNewline();
 }
 
-static void sparse_free(void *addr)
+static void sparse_free(void* addr)
 {
   /* A sparse matrix is allocated as a single memory chunk. */
   if (addr) p_free(addr);
 }
 
-static long   *get_array_l(Symbol *s, size_t *number);
-static double *get_array_d(Symbol *s, size_t *number);
-static long   *get_dimlist(Symbol *s, size_t *ndims_ptr, size_t *nelem_ptr);
-static unsigned int get_flags(Symbol *s, unsigned int default_value);
+static long* get_array_l(Symbol* s, size_t* number);
+static double* get_array_d(Symbol* s, size_t* number);
+static long* get_dimlist(Symbol* s, size_t* ndims_ptr, size_t* nelem_ptr);
+static unsigned int get_flags(Symbol* s, unsigned int default_value);
 
 /** Push a new array with given dimension list.  If DIMLIST is NULL, then the
     array is a vector of length N; otherwise N is the number of dimensions
     (and the number of lements in DIMLIST). */
-static Array *push_new_array(StructDef *base, size_t n,
+static Array* push_new_array(StructDef* base, size_t n,
                              const size_t dimlist[]);
 
 /** Pop topmost stack element in place of OWNER.  If CLEANUP is true,
     drop symbols from top of the stack until OWNER is the topmost one. */
-static void pop_to(Symbol *owner, int cleanup);
+static void pop_to(Symbol* owner, int cleanup);
 
 /* usage: sparse_matrix(coefs, row_dimlist, row_indices,
  *                             col_dimlist, col_indices)
  */
 void Y_sparse_matrix(int argc)
 {
-  size_t off1, off2, nint, size;
-  size_t i, number=0, ndims1, nelem1, len1, ndims2, nelem2, len2;
-  long *dims1, *idx1, *dims2, *idx2;
-  size_t *row_indices, *col_indices;
-  double *coefs, *nonzero;
-  sparse_t *sparse;
-
   /* Parse the arguments. */
   if (argc != 5) {
     YError("sparse_matrix takes exactly 5 arguments");
   }
-  nonzero = get_array_d(sp - 4, &number);
-  dims1   = get_dimlist(sp - 3, &ndims1, &nelem1);
-  idx1    = get_array_l(sp - 2, &len1);
-  dims2   = get_dimlist(sp - 1, &ndims2, &nelem2);
-  idx2    = get_array_l(sp    , &len2);
+  size_t number;
+  double* nonzero = get_array_d(sp - 4, &number);
+  size_t ndims1, nelem1;
+  long* dims1 = get_dimlist(sp - 3, &ndims1, &nelem1);
+  size_t len1;
+  long* idx1 = get_array_l(sp - 2, &len1);
+  size_t ndims2, nelem2;
+  long* dims2 = get_dimlist(sp - 1, &ndims2, &nelem2);
+  size_t len2;
+  long* idx2 = get_array_l(sp, &len2);
 
   /* Check row (1st) indices. */
   if (len1 != number) {
     YError("bad number of elements for list of row indices");
   }
-  for (i=0 ; i<number ; ++i) {
+  for (size_t i = 0; i < number; ++i) {
     if (idx1[i] <= 0 || idx1[i] > nelem1) {
       YError("out of range row index");
     }
@@ -162,7 +170,7 @@ void Y_sparse_matrix(int argc)
   if (len2 != number) {
     YError("bad number of elements for list of column indices");
   }
-  for (i=0 ; i<number ; ++i) {
+  for (size_t i = 0; i < number; ++i) {
     if (idx2[i] <= 0 || idx2[i] > nelem2) {
       YError("out of range column index");
     }
@@ -171,66 +179,63 @@ void Y_sparse_matrix(int argc)
   /* Allocate memory for the sparse matrix. Push the opaque object as soon
      as possible onto the stack to limit memory leak in case of
      interrupt. */
-#define ROUND_UP(a,b) ((((a) + (b) - 1)/(b))*(b))
-  off1 = ROUND_UP(sizeof(sparse_t), sizeof(size_t));
-  nint = ndims1 + number + ndims2 + number;
-  off2 = ROUND_UP(off1 + nint*sizeof(size_t), sizeof(double));
-  size = ROUND_UP(off2 + number*sizeof(double), sizeof(double));
-  sparse = p_malloc(size);
+  size_t off1 = ROUND_UP(sizeof(sparse_t), sizeof(size_t));
+  size_t nint = ndims1 + number + ndims2 + number;
+  size_t off2 = ROUND_UP(off1 + nint*sizeof(size_t), sizeof(double));
+  size_t size = ROUND_UP(off2 + number*sizeof(double), sizeof(double));
+  sparse_t* sparse = p_malloc(size);
   sparse->references = 0;
   sparse->ops = &sparseOps;
   PushDataBlock(sparse); /* early push */
   sparse->number = number;
   sparse->row.nelem = nelem1;
   sparse->row.ndims = ndims1;
-  sparse->row.dimlist = (size_t *)((char *)sparse + off1);
+  sparse->row.dimlist = (size_t*)((char*)sparse + off1);
   sparse->row.indices = sparse->row.dimlist + ndims1;
   sparse->col.nelem = nelem2;
   sparse->col.ndims = ndims2;
   sparse->col.dimlist = sparse->row.indices + number;
   sparse->col.indices = sparse->col.dimlist + ndims2;
-  sparse->coefs = (double *)((char *)sparse + off2);
+  sparse->coefs = (double*)((char*)sparse + off2);
 
   /* Fill up coefficients and list of row/column indices (beware that
      Yorick uses 1-based indices). */
-  for (i=0 ; i<ndims1 ; ++i) {
+  for (size_t i = 0; i < ndims1; ++i) {
     sparse->row.dimlist[i] = dims1[i];
   }
-  for (i=0 ; i<ndims2 ; ++i) {
+  for (size_t i = 0; i < ndims2; ++i) {
     sparse->col.dimlist[i] = dims2[i];
   }
-  coefs = sparse->coefs;
-  row_indices = sparse->row.indices;
-  col_indices = sparse->col.indices;
-  for (i=0 ; i<number ; ++i) row_indices[i] = idx1[i] - 1;
-  for (i=0 ; i<number ; ++i) col_indices[i] = idx2[i] - 1;
-  for (i=0 ; i<number ; ++i) coefs[i] = nonzero[i];
+  double* coefs = sparse->coefs;
+  size_t* row_indices = sparse->row.indices;
+  size_t* col_indices = sparse->col.indices;
+  for (size_t i = 0; i < number; ++i) row_indices[i] = idx1[i] - 1;
+  for (size_t i = 0; i < number; ++i) col_indices[i] = idx2[i] - 1;
+  for (size_t i = 0; i < number; ++i) coefs[i] = nonzero[i];
 }
 
 void Y_is_sparse_matrix(int nargs)
 {
-  Symbol *s;
-  int result;
   if (nargs != 1) YError("is_sparse_matrix takes exactly one argument");
-  s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
-  result = (s->ops == &dataBlockSym && s->value.db->ops == &sparseOps);
+  Symbol* s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
+  int result = (s->ops == &dataBlockSym && s->value.db->ops == &sparseOps);
   PushIntValue(result);
 }
 
-static long *get_array_l(Symbol *s, size_t *number_ptr)
+static long* get_array_l(Symbol* s, size_t* number_ptr)
 {
+  if (s->ops == NULL) unexpected_keyword_argument();
   Operand op;
-  if (! s->ops) YError("unexpected keyword argument");
-  switch (s->ops->FormOperand(s, &op)->ops->typeID) {
-  case T_CHAR:
-  case T_SHORT:
-  case T_INT:
+  int type = s->ops->FormOperand(s, &op)->ops->typeID;
+  if (type < T_LONG) {
     op.ops->ToLong(&op);
-  case T_LONG:
-    if (number_ptr) {
+    type = op.ops->typeID;
+  }
+  if (type == T_LONG) {
+    if (number_ptr != NULL) {
       size_t number = 1;
-      Dimension *dims = op.type.dims;
-      while (dims) {
+      Dimension* dims = op.type.dims;
+      while (dims != NULL) {
         number *= dims->number;
         dims = dims->next;
       }
@@ -239,25 +244,23 @@ static long *get_array_l(Symbol *s, size_t *number_ptr)
     return op.value;
   }
   YError("expecting array of integers");
-  return 0;
+  return NULL;
 }
 
-static double *get_array_d(Symbol *s, size_t *number_ptr)
+static double* get_array_d(Symbol* s, size_t* number_ptr)
 {
+  if (s->ops == NULL) unexpected_keyword_argument();
   Operand op;
-  if (! s->ops) YError("unexpected keyword argument");
-  switch (s->ops->FormOperand(s, &op)->ops->typeID) {
-  case T_CHAR:
-  case T_SHORT:
-  case T_INT:
-  case T_LONG:
-  case T_FLOAT:
+  int type = s->ops->FormOperand(s, &op)->ops->typeID;
+  if (type < T_DOUBLE) {
     op.ops->ToDouble(&op);
-  case T_DOUBLE:
-    if (number_ptr) {
+    type = op.ops->typeID;
+  }
+  if (type == T_DOUBLE) {
+    if (number_ptr != NULL) {
       size_t number = 1;
-      Dimension *dims = op.type.dims;
-      while (dims) {
+      Dimension* dims = op.type.dims;
+      while (dims != NULL) {
         number *= dims->number;
         dims = dims->next;
       }
@@ -266,44 +269,40 @@ static double *get_array_d(Symbol *s, size_t *number_ptr)
     return op.value;
   }
   YError("expecting array of reals");
-  return 0;
+  return NULL;
 }
 
-static long *get_dimlist(Symbol *s, size_t *ndims_ptr, size_t *nelem_ptr)
+static long* get_dimlist(Symbol* s, size_t* ndims_ptr, size_t* nelem_ptr)
 {
+  if (s->ops == NULL) unexpected_keyword_argument();
   Operand op;
-  size_t i, ndims, nelem;
-  long *dimlist;
-  Dimension *dims;
-
-  if (! s->ops) {
-    goto bad_dimlist;
-  }
-  switch (s->ops->FormOperand(s, &op)->ops->typeID) {
-  case T_CHAR:
-  case T_SHORT:
-  case T_INT:
+  int type = s->ops->FormOperand(s, &op)->ops->typeID;
+  if (type < T_LONG) {
     op.ops->ToLong(&op);
-  case T_LONG:
-    dims = op.type.dims;
-    if (! dims) {
+    type = op.ops->typeID;
+  }
+  if (type == T_LONG) {
+    size_t ndims;
+    long* dimlist;
+    Dimension* dims = op.type.dims;
+    if (dims == NULL) {
       ndims = 1;
-      dimlist = (long *)op.value;
-    } else if (! dims->next &&
-               (ndims = *(long *)op.value) == dims->number - 1) {
-      dimlist = (long *)op.value + 1;
+      dimlist = (long*)op.value;
+    } else if (dims->next == NULL &&
+               (ndims = *(long*)op.value) == dims->number - 1) {
+      dimlist = (long*)op.value + 1;
     } else {
       goto bad_dimlist;
     }
-    nelem = 1;
-    for (i=0 ; i<ndims ; ++i) {
+    size_t nelem = 1;
+    for (size_t i = 0; i < ndims; ++i) {
       if (dimlist[i] <= 0) goto bad_dimlist;
-      nelem *= dimlist[i];
+      nelem *= (size_t)dimlist[i];
     }
-    if (ndims_ptr) {
+    if (ndims_ptr != NULL) {
       *ndims_ptr = ndims;
     }
-    if (nelem_ptr) {
+    if (nelem_ptr != NULL) {
       *nelem_ptr = nelem;
     }
     return dimlist;
@@ -314,11 +313,12 @@ static long *get_dimlist(Symbol *s, size_t *ndims_ptr, size_t *nelem_ptr)
   return NULL; /* avoids compiler warnings */
 }
 
-static unsigned int get_flags(Symbol *s, unsigned int default_value)
+static unsigned int get_flags(Symbol* s, unsigned int default_value)
 {
   Operand op;
   if (s->ops==&longScalar) return s->value.l;
   if (s->ops==&intScalar) return s->value.i;
+  if (s->ops == NULL) unexpected_keyword_argument();
   if (! s->ops->FormOperand(s, &op)->type.dims) {
     switch (op.ops->typeID) {
     case T_CHAR:   return *(char*)op.value;;
@@ -334,17 +334,17 @@ static unsigned int get_flags(Symbol *s, unsigned int default_value)
 
 /* sparse_eval implements sparse matrix used as a function (or as an indexed
    array). */
-static void sparse_eval(Operand *op0)
+static void sparse_eval(Operand* op0)
 {
   Operand op;
   size_t k, number;
-  Symbol *sym, *stack = op0->owner;
-  Dimension *dims;
-  sparse_t *sparse;
-  const size_t *j, *i;
-  const index_t *inp, *out;
-  const double *a, *x;
-  double *y;
+  Symbol* sym, *stack = op0->owner;
+  Dimension* dims;
+  sparse_t* sparse;
+  const size_t* j, *i;
+  const index_t* inp, *out;
+  const double* a, *x;
+  double* y;
   unsigned int flags;
 
   if (sp - stack > 2) {
@@ -356,9 +356,9 @@ static void sparse_eval(Operand *op0)
   sym = (stack->ops == &referenceSym) ? &globTab[stack->index] : stack;
   if (sym->ops != &dataBlockSym || sym->value.db->ops != &sparseOps)
     YError("unexpected non-sparse matrix object (must be a BUG!)");
-  sparse = (sparse_t *)sym->value.db;
+  sparse = (sparse_t*)sym->value.db;
 #else
-  sparse = (sparse_t *)stack->value.db;
+  sparse = (sparse_t*)stack->value.db;
 #endif
 
   /* Get the flags. */
@@ -381,7 +381,7 @@ static void sparse_eval(Operand *op0)
 
   /* Get the input 'vector'. */
   sym = stack + 1;
-  if (! sym->ops) YError("unexpected keyword argument");
+  if (sym->ops == NULL) unexpected_keyword_argument();
   switch (sym->ops->FormOperand(sym, &op)->ops->typeID) {
   case T_CHAR:
   case T_SHORT:
@@ -431,18 +431,18 @@ static void sparse_eval(Operand *op0)
   pop_to(op0->owner, 1);
 }
 
-static void push_indices(const index_t *p, size_t number);
+static void push_indices(const index_t* p, size_t number);
 
-static void push_dimlist(const index_t *p);
+static void push_dimlist(const index_t* p);
 
-static void sparse_get_member(Operand *op, char *name)
+static void sparse_get_member(Operand* op, char* name)
 {
   static long row_dimlist_id = -1L;
   static long row_indices_id = -1L;
   static long col_dimlist_id = -1L;
   static long col_indices_id = -1L;
   static long coefs_id = -1L;
-  sparse_t *this = (sparse_t *)op->value;
+  sparse_t* this = (sparse_t*)op->value;
 
   if (coefs_id < 0) {
     row_dimlist_id = Globalize("row_dimlist", 0L);
@@ -481,10 +481,10 @@ static void sparse_get_member(Operand *op, char *name)
   YError("illegal sparse matrix member");
 }
 
-static void pop_to(Symbol *owner, int cleanup)
+static void pop_to(Symbol* owner, int cleanup)
 {
-  DataBlock *old = (owner->ops == &dataBlockSym) ? owner->value.db : NULL;
-  Symbol *stack;
+  DataBlock* old = (owner->ops == &dataBlockSym) ? owner->value.db : NULL;
+  Symbol* stack;
   owner->ops = &intScalar; /* avoid clash in case of interrupts */
   stack = sp--; /* sp decremented BEFORE stack element is moved */
   owner->value = stack->value;
@@ -498,32 +498,32 @@ static void pop_to(Symbol *owner, int cleanup)
   }
 }
 
-static void push_dimlist(const index_t *p)
+static void push_dimlist(const index_t* p)
 {
   size_t i, ndims = p->ndims;
-  const size_t *dimlist = p->dimlist;
-  long *ptr = push_new_array(&longStruct, ndims + 1, NULL)->value.l;
+  const size_t* dimlist = p->dimlist;
+  long* ptr = push_new_array(&longStruct, ndims + 1, NULL)->value.l;
   *ptr++ = ndims;
   for (i=0 ; i<ndims ; ++i) {
     ptr[i] = dimlist[i];
   }
 }
 
-static void push_indices(const index_t *p, size_t number)
+static void push_indices(const index_t* p, size_t number)
 {
   size_t i;
-  long *ptr = push_new_array(&longStruct, number, NULL)->value.l;
-  const size_t *index = p->indices;
+  long* ptr = push_new_array(&longStruct, number, NULL)->value.l;
+  const size_t* index = p->indices;
   for (i=0 ; i<number ; ++i) {
     ptr[i] = index[i] + 1;
   }
 }
 
-static Array *push_new_array(StructDef *base, size_t n,
+static Array* push_new_array(StructDef* base, size_t n,
                              const size_t dimlist[])
 {
   size_t i;
-  Dimension *dims = tmpDims;
+  Dimension* dims = tmpDims;
   tmpDims = NULL;
   if (dims) FreeDimension(dims);
   if (dimlist) {
@@ -533,12 +533,12 @@ static Array *push_new_array(StructDef *base, size_t n,
   } else {
     tmpDims = NewDimension(n, 1L, tmpDims);
   }
-  return (Array *)PushDataBlock(NewArray(base, tmpDims));
+  return (Array*)PushDataBlock(NewArray(base, tmpDims));
 }
 
 /*---------------------------------------------------------------------------*/
 
-static size_t pack_dimlist(const Dimension *dims, size_t dimlist[],
+static size_t pack_dimlist(const Dimension* dims, size_t dimlist[],
                            size_t maxdims);
 
 void Y_mvmult(int argc)
@@ -547,10 +547,10 @@ void Y_mvmult(int argc)
   double s;
   Operand op;
   unsigned int flags;
-  Symbol *stack;
-  Dimension *dims;
-  const double *a, *x;
-  double *y;
+  Symbol* stack;
+  Dimension* dims;
+  const double* a, *x;
+  double* y;
   size_t i, j, nx, ny;
   size_t ndims_a, ndims_x, ndims_y;
 #define MAXDIMS 32
@@ -558,7 +558,7 @@ void Y_mvmult(int argc)
 
   if (argc < 2 || argc > 3) YError("mvmult takes 2 or 3 arguments");
   stack = sp - argc + 1;
-  if (! stack->ops) YError("unexpected keyword argument");
+  if (stack->ops == NULL) unexpected_keyword_argument();
   stack->ops->FormOperand(stack, &op);
   if (op.ops == &sparseOps) {
     sparse_eval(&op); /* that's all folks! */
@@ -588,7 +588,7 @@ void Y_mvmult(int argc)
 
     /* Get the 'vector' X. */
     ++stack;
-    if (! stack->ops) YError("unexpected keyword argument");
+    if (stack->ops == NULL) unexpected_keyword_argument();
     stack->ops->FormOperand(stack, &op);
     switch (op.ops->typeID) {
     case T_CHAR:
@@ -644,7 +644,7 @@ void Y_mvmult(int argc)
     }
 
     /* Allocate output array and perform matrix multiplication. */
-    y = ((Array *)PushDataBlock(NewArray(&doubleStruct, tmpDims)))->value.d;
+    y = ((Array*)PushDataBlock(NewArray(&doubleStruct, tmpDims)))->value.d;
     if (flags) {
       for (i = 0 ; i < ny ; ++i, a += nx) {
         s = zero;
@@ -666,10 +666,10 @@ void Y_mvmult(int argc)
   }
 }
 
-static size_t pack_dimlist(const Dimension *dims, size_t dimlist[],
+static size_t pack_dimlist(const Dimension* dims, size_t dimlist[],
                            size_t maxdims)
 {
-  const Dimension *ptr = dims;
+  const Dimension* ptr = dims;
   size_t i, n = 0;
   while (ptr) {
     ++n;

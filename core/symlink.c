@@ -31,19 +31,19 @@ extern BuiltIn Y_symlink_to_name, Y_symlink_to_variable;
 extern BuiltIn Y_is_symlink;
 extern BuiltIn Y_name_of_symlink, Y_value_of_symlink;
 
-extern DataBlock *ForceToDB(Symbol *s);
+extern DataBlock* ForceToDB(Symbol* s);
 
 /* Implement symbolic links as a foreign Yorick data type.  */
 typedef struct _symlink symlink_t;
 struct _symlink {
   int references;      /* reference counter */
-  Operations *ops;     /* virtual function table */
+  Operations* ops;     /* virtual function table */
   long index;          /* index into global symbol table */
 };
 
-static symlink_t *new_symlink(long index);
-static void free_symlink(void *list);  /* ******* Use Unref(list) ******* */
-static void dereference_symlink(Operand *op);
+static symlink_t* new_symlink(long index);
+static void free_symlink(void* list);  /* ******* Use Unref(list) ******* */
+static void dereference_symlink(Operand* op);
 
 extern PromoteOp PromXX;
 extern UnaryOp ToAnyX, NegateX, ComplementX, NotX, TrueX;
@@ -74,25 +74,25 @@ Operations symlink_ops = {
 static MemryBlock symlink_block= {0, 0, sizeof(symlink_t),
                                64*sizeof(symlink_t)};
 
-static symlink_t *new_symlink(long index)
+static symlink_t* new_symlink(long index)
 {
-  symlink_t *lnk = NextUnit(&symlink_block);
+  symlink_t* lnk = NextUnit(&symlink_block);
   lnk->references = 0;
   lnk->ops = &symlink_ops;
   lnk->index = index;
   return lnk;
 }
 
-static void free_symlink(void *addr)  /* ******* Use Unref(lnk) ******* */
+static void free_symlink(void* addr)  /* ******* Use Unref(lnk) ******* */
 {
-  /* symlink_t *lnk = addr; */
+  /* symlink_t* lnk = addr; */
   FreeUnit(&symlink_block, addr);
 }
 
-static void print_symlink(Operand *op)
+static void print_symlink(Operand* op)
 {
-  symlink_t *lnk = op->value;
-  char *name = globalTable.names[lnk->index];
+  symlink_t* lnk = op->value;
+  char* name = globalTable.names[lnk->index];
   ForceNewline();
   PrintFunc("symbolic link to \"");
   PrintFunc(name);
@@ -100,23 +100,19 @@ static void print_symlink(Operand *op)
   ForceNewline();
 }
 
-static void dereference_symlink(Operand *op)
+static void dereference_symlink(Operand* op)
 {
-  Symbol *s, *owner;
-  symlink_t *lnk;
-  DataBlock *db;
-
   /* Replace owner by the globTab symbol which is indexed by the symbolic
      link object. */
-  owner = op->owner;
+  Symbol* owner = op->owner;
 #if defined(YETI_SYMLINK_DEBUG) && YETI_SYMLINK_DEBUG >= 1
   if (! owner || (owner - sp) > 0 || (owner - spBottom) < 0) {
     /* owner should be on stack if this called from Eval or Print */
     YError("symbolic link object evaluated in illegal situation");
   }
 #endif
-  lnk = op->value;
-  s = &globTab[lnk->index];
+  symlink_t* lnk = op->value;
+  Symbol* s = &globTab[lnk->index];
   if (owner->ops == &dataBlockSym) {
     /* always take this branch, and Unref usually does free_symlink */
     owner->ops = &intScalar;
@@ -126,6 +122,7 @@ static void dereference_symlink(Operand *op)
     YError("assertion failed for symbolic link object");
 #endif
   }
+  DataBlock* db;
   if (s->ops == &dataBlockSym) {
     db = s->value.db;
     if (db->ops == &symlink_ops) {
@@ -142,13 +139,13 @@ static void dereference_symlink(Operand *op)
   op->value = db;
 }
 
-static void eval_symlink(Operand *op)
+static void eval_symlink(Operand* op)
 {
   dereference_symlink(op);
   op->ops->Eval(op);
 }
 
-static void get_symlink_member(Operand *op, char *name)
+static void get_symlink_member(Operand* op, char* name)
 {
   dereference_symlink(op);
   op->ops->GetMember(op, name);
@@ -167,23 +164,21 @@ void Y_symlink_to_variable(int nargs)
 
 void Y_symlink_to_name(int nargs)
 {
-  Operand op;
-  const char *name;
-  int i, c;
-
   if (nargs != 1) {
     YError("symlink_to_name takes exactly one argument");
   }
   if (! sp->ops) {
     YError("unexpected keyword argument");
   }
+  Operand op;
   sp->ops->FormOperand(sp, &op);
   if (op.ops->typeID != T_STRING || op.type.dims) {
     YError("expecting scalar string argument");
   }
-  name = *(char **)op.value;
-  i = -1;
-  if (name) {
+  const char* name = *(char**)op.value;
+  long i = -1;
+  if (name != NULL) {
+    int c;
     while ((c = name[++i]) != '\0') {
       if ((c < 'a' || c > 'z') &&
           (c < 'A' || c > 'Z') &&
@@ -202,51 +197,39 @@ void Y_symlink_to_name(int nargs)
 
 void Y_is_symlink(int nargs)
 {
-  Symbol *s;
-  int result;
-
   if (nargs != 1) YError("is_symlink takes exactly one argument");
-  s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
-  result = (s->ops == &dataBlockSym && s->value.db->ops == &symlink_ops);
+  Symbol* s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
+  int result = (s->ops == &dataBlockSym && s->value.db->ops == &symlink_ops);
   PushIntValue(result);
 }
 
 void Y_name_of_symlink(int nargs)
 {
-  Symbol *s;
-  char *name;
-  symlink_t *lnk;
-  Array *array;
-
   if (nargs != 1) YError("name_of_symlink takes exactly one argument");
-  s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
+  Symbol* s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
   if (s->ops != &dataBlockSym || s->value.db->ops != &symlink_ops) {
     YError("expecting a symbolic link object");
   }
-  lnk = (symlink_t *)s->value.db;
-  name = globalTable.names[lnk->index];
-  array = (Array *)PushDataBlock(NewArray(&stringStruct, NULL));
+  symlink_t* lnk = (symlink_t*)s->value.db;
+  char* name = globalTable.names[lnk->index];
+  Array* array = (Array*)PushDataBlock(NewArray(&stringStruct, NULL));
   array->value.q[0] = p_strcpy(name);
 }
 
 void Y_value_of_symlink(int nargs)
 {
-  Symbol *s, *stack;
-  DataBlock *db;
-  symlink_t *lnk;
-
   if (nargs != 1) YError("value_of_symlink takes exactly one argument");
-  s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
+  Symbol* s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
   if (s->ops != &dataBlockSym || s->value.db->ops != &symlink_ops) {
     YError("expecting a symbolic link object");
   }
-  lnk = (symlink_t *)s->value.db;
+  symlink_t* lnk = (symlink_t*)s->value.db;
   s = &globTab[lnk->index];
   if (s->ops == &dataBlockSym) {
-    db = s->value.db;
+    DataBlock* db = s->value.db;
     PushDataBlock(Ref(db));
   } else {
-    stack = sp + 1;
+    Symbol* stack = sp + 1;
     stack->ops = s->ops;
     stack->value = s->value;
     sp = stack;

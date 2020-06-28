@@ -5,8 +5,6 @@ write, "*** TODO: optimize (1) add coefficients with same indices";
 write, "*** TODO: optimize (2) only keep non-zero coefficients (==> sparse_shrink becomes trivial)";
 write, "*** TODO: optimize (3) sort coefficients according to transpose or not";
 
-
-
 func sparse_test(row_dimlist, col_dimlist)
 {
   a = random(row_dimlist, col_dimlist) - 0.5;
@@ -14,7 +12,8 @@ func sparse_test(row_dimlist, col_dimlist)
   a *= (random(dims) < 0.9); /* make it sparse */
   stride = numberof(array(char, row_dimlist));
   nonzero = where(a);
-  s = sparse_matrix(a(nonzero), row_dimlist, 1 + (nonzero - 1)%stride,
+  s = sparse_matrix(a(nonzero),
+                    row_dimlist, 1 + (nonzero - 1)%stride,
                     col_dimlist, 1 + (nonzero - 1)/stride);
 
   /* make A a 2-D matrix. */

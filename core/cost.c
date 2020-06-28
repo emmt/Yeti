@@ -29,8 +29,8 @@ static cost_worker_t cost_l2;
 static cost_worker_t cost_l2l1;
 static cost_worker_t cost_l2l0;
 
-static void cost_wrapper(int argc, const char *name,
-                         cost_worker_t *worker);
+static void cost_wrapper(int argc, const char* name,
+                         cost_worker_t* worker);
 
 void Y_cost_l2(int argc)
 {
@@ -47,16 +47,16 @@ void Y_cost_l2l0(int argc)
   cost_wrapper(argc, "l2-l0", cost_l2l0);
 }
 
-static void cost_wrapper(int argc, const char *name,
-                         cost_worker_t *worker)
+static void cost_wrapper(int argc, const char* name,
+                         cost_worker_t* worker)
 {
   const double ZERO = 0.0;
   double result, mu, tpos, tneg, hyper[3];
   Operand op;
   size_t number;
-  const double *x;
-  double *g ;
-  Symbol *s;
+  const double* x;
+  double* g ;
+  Symbol* s;
   long index;
   int choice, temporary;
 
@@ -78,7 +78,7 @@ static void cost_wrapper(int argc, const char *name,
     case T_FLOAT:
       op.ops->ToDouble(&op);
     case T_DOUBLE:
-      x = (const double *)op.value;
+      x = (const double*)op.value;
       break;
     default:
       YError("bad data type for the hyper-parameters");
@@ -109,7 +109,7 @@ static void cost_wrapper(int argc, const char *name,
 
   /* Get the parameters. */
   ++s;
-  x = (double *)0;
+  x = (double*)0;
   temporary = 0;
   if (s->ops && s->ops->FormOperand(s, &op)->ops->isArray) {
     switch (op.ops->typeID) {
@@ -120,7 +120,7 @@ static void cost_wrapper(int argc, const char *name,
     case T_FLOAT:
       op.ops->ToDouble(&op);
     case T_DOUBLE:
-      x = (const double *)op.value;
+      x = (const double*)op.value;
       temporary = (! op.references);
       number = op.type.number;
     }
@@ -140,14 +140,14 @@ static void cost_wrapper(int argc, const char *name,
     index = s->index;
     Drop(1);
     if (temporary) {
-      g = (double *)x;
+      g = (double*)x;
     } else {
-      g = ((Array *)PushDataBlock(NewArray(&doubleStruct,
-                                           op.type.dims)))->value.d;
+      g = ((Array*)PushDataBlock(NewArray(&doubleStruct,
+                                          op.type.dims)))->value.d;
     }
   } else {
     index = -1L;
-    g = (double *)0;
+    g = (double*)0;
   }
 
   hyper[0] = mu;

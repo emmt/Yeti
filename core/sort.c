@@ -71,7 +71,7 @@ extern BuiltIn Y_heapsort;
 void Y_heapsort(int argc)
 {
   Operand op;
-  index_t *index = NULL, number;
+  index_t* index = NULL, number;
 
   if (argc != 1) YError("heapsort takes exactly one argument");
   if (! sp->ops) YError("unexpected keyword");
@@ -139,8 +139,8 @@ void Y_quick_select(int argc)
 {
   Operand op;
   index_t number, k, first, last, offset, elsize;
-  Symbol *s;
-  void *ptr;
+  Symbol* s;
+  void* ptr;
   int in_place, type;
 
   if (argc < 2 || argc > 4) {
@@ -201,44 +201,44 @@ void Y_quick_select(int argc)
   offset = first - 1;
   number = last - first + 1;
   k -= first; /* must be zero-based index */
-  ptr = (void *)(((char *)ptr) + offset*elsize);
+  ptr = (void*)(((char*)ptr) + offset*elsize);
 
 
   switch (type) {
   case T_CHAR:
-    _yeti_quick_select_c(k, number, (unsigned char *)ptr);
+    _yeti_quick_select_c(k, number, (unsigned char*)ptr);
     if (! in_place) {
-      yeti_push_char_value(((unsigned char *)ptr)[k]);
+      yeti_push_char_value(((unsigned char*)ptr)[k]);
     }
     break;
   case T_SHORT:
-    _yeti_quick_select_s(k, number, (short *)ptr);
+    _yeti_quick_select_s(k, number, (short*)ptr);
     if (! in_place) {
-      yeti_push_short_value(((short *)ptr)[k]);
+      yeti_push_short_value(((short*)ptr)[k]);
     }
     break;
   case T_INT:
-    _yeti_quick_select_i(k, number, (int *)ptr);
+    _yeti_quick_select_i(k, number, (int*)ptr);
     if (! in_place) {
-      yeti_push_int_value(((int *)ptr)[k]);
+      yeti_push_int_value(((int*)ptr)[k]);
     }
     break;
   case T_LONG:
-    _yeti_quick_select_l(k, number, (long *)ptr);
+    _yeti_quick_select_l(k, number, (long*)ptr);
     if (! in_place) {
-      yeti_push_long_value(((long *)ptr)[k]);
+      yeti_push_long_value(((long*)ptr)[k]);
     }
     break;
   case T_FLOAT:
-    _yeti_quick_select_f(k, number, (float *)ptr);
+    _yeti_quick_select_f(k, number, (float*)ptr);
     if (! in_place) {
-      yeti_push_float_value(((float *)ptr)[k]);
+      yeti_push_float_value(((float*)ptr)[k]);
     }
     break;
   case T_DOUBLE:
-    _yeti_quick_select_d(k, number, (double *)ptr);
+    _yeti_quick_select_d(k, number, (double*)ptr);
     if (! in_place) {
-      yeti_push_double_value(((double *)ptr)[k]);
+      yeti_push_double_value(((double*)ptr)[k]);
     }
     break;
   }
@@ -317,7 +317,7 @@ static void HEAPSORT0(index_t index[], const value_t a[], const index_t n)
 #ifdef HEAPSORT1
 /* HEAPSORT1 - indirect sorting of an array, with Yorick/FORTRAN indexing
    (starting at 1) */
-static void HEAPSORT1(index_t index[], const value_t *a, index_t n)
+static void HEAPSORT1(index_t index[], const value_t* a, index_t n)
 {
   index_t i,j,k,l,isave;
   value_t asave;

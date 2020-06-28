@@ -40,9 +40,8 @@ void Y_parse_range(int argc);
 #if 0
 void Y_is_range(int argc)
 {
-  int result = 0;
-
   if (argc != 1) y_error("wrong number of arguments");
+  int result = 0;
   switch (yarg_typeid(0)) {
   case Y_CHAR:
   case Y_SHORT:
@@ -65,9 +64,10 @@ void Y_is_range(int argc)
 
 void Y_make_range(int argc)
 {
-  long dims[Y_DIMSIZE], ntot, *arr;
-
   if (argc != 1) y_error("wrong number of arguments");
+  long dims[Y_DIMSIZE];
+  long ntot;
+  long* arr;
   switch (yarg_typeid(0)) {
   case Y_CHAR:
   case Y_SHORT:
@@ -84,13 +84,10 @@ void Y_make_range(int argc)
 
 void Y_parse_range(int argc)
 {
-  long dims[2], *arr;
-
   if (argc != 1) y_error("wrong number of arguments");
   if (yarg_typeid(0) != Y_RANGE) y_error("expecting a range");
-  dims[0] = 1;
-  dims[1] = 4;
-  arr = ypush_l(dims);
+  long dims[2] = {1, 4};
+  long* arr = ypush_l(dims);
   arr[0] = yget_range(1, &arr[1]); /* iarg=1 because result already pushed
                                       on top of stack */
 }
@@ -117,7 +114,7 @@ void Y_parse_range(int argc)
 #if 0
 void Y_tmpfile(int argc)
 {
-  const char *tail = "XXXXXX";
+  const char* tail = "XXXXXX";
   ystring_t src, dst, *arr;
   long len, size;
   int pad, fd;
@@ -161,7 +158,7 @@ void Y_same_dimlist(int argc)
 /* n  or [l, n1, n2, .., nl] */
 void Y_make_dimlist(int argc)
 {
-  long *dimlist, dims[Y_DIMSIZE], ref, ndims, j, n;
+  long* dimlist, dims[Y_DIMSIZE], ref, ndims, j, n;
   int iarg;            /* argument index */
   int nvoids;          /* number of void arguments */
   int iarg_of_result;  /* index of potentially valid result */
@@ -229,18 +226,18 @@ void Y_make_dimlist(int argc)
   dimlist = ypush_l(dims);
   *dimlist = ndims;
   for (iarg = argc; iarg >= 1; --iarg) {
-#define GET_DIMS(type_t, x)					\
-      {								\
-        type_t *ptr = (type_t *)ygeta_##x(iarg, &n, dims);	\
-        if (dims[0]) {						\
-          for (j=1L ; j<n ; ++j) {				\
-            *++dimlist = ptr[j];				\
-          }							\
-        } else {						\
-          *++dimlist = ptr[0];					\
-        }							\
-      }								\
-      break
+#define GET_DIMS(type_t, x)                             \
+    {                                                   \
+      type_t* ptr = (type_t*)ygeta_##x(iarg, &n, dims);	\
+      if (dims[0]) {                                    \
+        for (j=1L ; j<n ; ++j) {                        \
+          *++dimlist = ptr[j];				\
+        }                                               \
+      } else {						\
+        *++dimlist = ptr[0];                            \
+      }							\
+    }                                                   \
+    break
     switch (yarg_typeid(iarg)) {
     case Y_CHAR:  GET_DIMS(unsigned char, c);
     case Y_SHORT: GET_DIMS(short,         s);
@@ -259,15 +256,13 @@ void Y_make_dimlist(int argc)
 #else /* _YETI_NEW_C *********************************************************/
 
 #ifdef CHECK_DIMS
-static long CHECK_DIMS(const void *array, const long dims[])
+static long CHECK_DIMS(const void* array, const long dims[])
 {
-  const type_t *value = array;
-  long j, n;
-
-  n = value[0];
-  if (! dims[0] && n > 0L) return 1L;
-  if (dims[0] == 1L && dims[1] == n + 1L) {
-    for (j=1L ; j<=n ; ++j) {
+  const type_t* value = array;
+  long  n = value[0];
+  if (dims[0] == 0 && n > 0) return 1;
+  if (dims[0] == 1 && dims[1] == n + 1) {
+    for (long j = 1; j <= n; ++j) {
       if (value[j] <= 0) {
         goto bad_dimlist;
       }

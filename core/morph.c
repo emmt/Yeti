@@ -52,7 +52,7 @@
 #include __FILE__
 
 static void morph_op(int argc, int mop);
-static long *get_offset(Symbol *s, Dimension **dims);
+static long* get_offset(Symbol* s, Dimension** dims);
 
 extern BuiltIn Y_morph_erosion, Y_morph_dilation;
 
@@ -68,26 +68,22 @@ void Y_morph_dilation(int argc)
 
 static void morph_op(int argc, int mop)
 {
-  char msg[80];
-  Operand op;
-  Dimension *dims;
-  Symbol *s;
-  Array *ap;
-  long ndims, width, height, depth, number, *off, *dx, *dy, *dz;
-
   if (argc != 2) {
-    sprintf(msg, "morph_%s takes exactly 2 arguments",
-            (mop ? "dilation" : "erosion"));
-    YError(msg);
+    YError((mop ?
+            "morph_dilation takes exactly 2 arguments" :
+            "morph_erosion takes exactly 2 arguments"));
   }
 
   /* Get input array. */
-  s = sp - 1;
-  if (! s->ops) YError("unexpected keyword argument");
-  dims = s->ops->FormOperand(s, &op)->type.dims;
-  ndims = 0;
-  width = height = depth = 0;
-  while (dims) {
+  Symbol* s = sp - 1;
+  if (s->ops == NULL) YError("unexpected keyword argument");
+  Operand op;
+  Dimension* dims = s->ops->FormOperand(s, &op)->type.dims;
+  long ndims = 0;
+  long width = 0;
+  long height = 0;
+  long depth = 0;
+  while (dims != NULL) {
     if (++ndims > 3) YError("too many dimensions for input array");
     depth = height;
     height = width;
@@ -95,31 +91,33 @@ static void morph_op(int argc, int mop)
     dims = dims->next;
   }
 
-  /* Get radius / offset array. */
-  off = get_offset(sp, &dims);
-  if (! dims) {
+  /* Get radius or offset array. */
+  long* off = get_offset(sp, &dims);
+  long* dx;
+  long* dy;
+  long* dz;
+  long number;
+  if (dims == NULL) {
     /* Only one extra scalar argument: the structuring element is a
        sphere. */
-    long x, y, z, r, n, lim0, lim1, lim2;
-    r = off[0];
+    long r = off[0];
     if (r < 0) {
-      YError("radius of structuring element must be a positive integer");
+      YError("radius of structuring element must be non-negative");
     }
     Drop(1); /* to be able to push temporary workspace */
-    n = 2*r + 1;
-    lim0 = r*(r + 1);
+    long n = 2*r + 1;
+    long lim0 = r*(r + 1);
     number = 0;
     if (depth > 1) {
-      n = n*n*n; /* maximum number of offsets per dimension */
-      off = yeti_push_workspace(3*sizeof(long)*n);
-      dx = off;
-      dy = dx + n;
-      dz = dy + n;
-      for (z=-r ; z<=r ; ++z) {
-        lim1 = lim0 - z*z;
-        for (y=-r ; y<=r ; ++y) {
-          lim2 = lim1 - y*y;
-          for (x=-r ; x<=r ; ++x) {
+      long mx = n*n*n; /* maximum number of offsets per dimension */
+      dx = yeti_push_workspace(3*sizeof(long)*mx);
+      dy = dx + mx;
+      dz = dy + mx;
+      for (long z = -r; z <= r; ++z) {
+        long lim1 = lim0 - z*z;
+        for (long y = -r; y <= r; ++y) {
+          long lim2 = lim1 - y*y;
+          for (long x = -r; x <= r; ++x) {
             /* To be inside the structuring element, we must have
              *   sqrt(x*x + y*y + z*z) < r + 1/2
              * which is the same as:
@@ -136,13 +134,13 @@ static void morph_op(int argc, int mop)
         }
       }
     } else if (height > 1) {
-      n = n*n; /* maximum number of offsets per dimension */
-      dx = yeti_push_workspace(2*sizeof(long)*n);
-      dy = dx + n;
+      long mx = n*n; /* maximum number of offsets per dimension */
+      dx = yeti_push_workspace(2*sizeof(long)*mx);
+      dy = dx + mx;
       dz = NULL;
-      for (y=-r ; y<=r ; ++y) {
-        lim1 = lim0 - y*y;
-        for (x=-r ; x<=r ; ++x) {
+      for (long y = -r; y <= r; ++y) {
+        long lim1 = lim0 - y*y;
+        for (long x = -r; x <= r; ++x) {
           if (x*x <= lim1) {
             dx[number] = x;
             dy[number] = y;
@@ -151,11 +149,13 @@ static void morph_op(int argc, int mop)
         }
       }
     } else {
-      dx = yeti_push_workspace(sizeof(long)*n);
+      long mx = n;
+      dx = yeti_push_workspace(sizeof(long)*mx);
       dy = NULL;
       dz = NULL;
-      for (x=-r ; x<=r ; ++x) {
-        dx[number++] = x;
+      for (long x = -r; x <= r; ++x) {
+        dx[number] = x;
+        ++number;
       }
     }
   } else {
@@ -166,7 +166,7 @@ static void morph_op(int argc, int mop)
       dims = dims->next;
     }
     number = 1;
-    while (dims) {
+    while (dims != NULL) {
       number *= dims->number;
       dims = dims->next;
     }
@@ -176,10 +176,10 @@ static void morph_op(int argc, int mop)
   }
 
   /* Allocate output array and apply the operation. */
-  ap = ((Array *)PushDataBlock(NewArray(op.type.base, op.type.dims)));
+  Array* ap = ((Array*)PushDataBlock(NewArray(op.type.base, op.type.dims)));
   switch (op.ops->typeID) {
 #undef _
-#define _(ID) (mop ? dilation_##ID : erosion_##ID)((void *)ap->value.ID, \
+#define _(T) (mop ? dilation_##T : erosion_##T)((void*)ap->value.T, \
               op.value, width, height, depth, dx, dy, dz, number); break
   case T_CHAR:   _(c);
   case T_SHORT:  _(s);
@@ -194,15 +194,14 @@ static void morph_op(int argc, int mop)
 }
 
 /* almost the same as YGet_L */
-static long *get_offset(Symbol *s, Dimension **dims)
+static long* get_offset(Symbol* s, Dimension** dims)
 {
-  Operand op;
-
-  if (! s->ops) YError("unexpected keyword argument");
+  if (s->ops == NULL) YError("unexpected keyword argument");
   if (s->ops == &referenceSym && globTab[s->index].ops == &longScalar) {
-    if (dims) *dims= 0;
+    if (dims != NULL) *dims = 0;
     return &globTab[s->index].value.l;
   }
+  Operand op;
   switch (s->ops->FormOperand(s, &op)->ops->typeID) {
   case T_CHAR:
   case T_SHORT:
@@ -233,39 +232,36 @@ long MORPH_SEGMENTATION(long region[],
 #define UP     ((search_t)8)
 #define ALL    ((search_t)(LEFT|RIGHT|DOWN|UP))
 
-  long number, x, y;
-  long i, j, k, l, mark, count;
-  voxel_t level;
-  search_t s;
-
-  mark = 1;
-  number = width*height;
-  for (i=0 ; i<number ; ++i) {
-    if (region[i]) continue; /* pixel already marked */
-    count = 0;           /* start a new region with zero pixels */
-    level = img[i];      /* pixel value within current region */
-    region[i] = mark;    /* mark current pixel */
-    search[i] = ALL;     /* will check all neighbors of current pixel */
-    index[count++] = i;  /* current pixel belongs to current region */
-    for (j=0 ; j<count ; ++j) {
-      k = index[j];
-      x = k%width;
-      y = k/width;
-      s = search[k];
+  long mark = 1;
+  long number = width*height;
+  for (long i = 0; i < number; ++i) {
+    if (region[i] != 0) continue; /* pixel already marked */
+    long count = 0;         /* start a new region with zero pixels */
+    voxel_t level = img[i]; /* pixel value within current region */
+    region[i] = mark;       /* mark current pixel */
+    search[i] = ALL;        /* will check all neighbors of current pixel */
+    index[count++] = i;     /* current pixel belongs to current region */
+    for (long j = 0; j < count; ++j) {
+      long k = index[j];
+      long x = k%width;
+      long y = k/width;
+      search_t s = search[k];
 
 #define CHECK_PIXEL(DIRECTION, BOUND_CHECK, POSITION)	\
-      if ((s & DIRECTION) && (BOUND_CHECK)) {		\
-        l = POSITION;					\
-        if (img[l] == level) {				\
-          if (region[l] == mark) {			\
-            search[l] &= (ALL & (~(DIRECTION)));	\
-          } else {					\
-            region[l] = mark;				\
-            search[l] = (ALL & (~(DIRECTION)));		\
-            index[count++] = l;				\
+      do {                                              \
+        if ((s & DIRECTION) && (BOUND_CHECK)) {         \
+          long l = (POSITION);                          \
+          if (img[l] == level) {                        \
+            if (region[l] == mark) {			\
+              search[l] &= (ALL & (~(DIRECTION)));	\
+            } else {					\
+              region[l] = mark;				\
+              search[l] = (ALL & (~(DIRECTION)));       \
+              index[count++] = l;                       \
+            }						\
           }						\
-        }						\
-      }
+        }                                               \
+      } while (0)
       CHECK_PIXEL(LEFT,  x > 0,            k - 1);
       CHECK_PIXEL(RIGHT, x < (width - 1),  k + 1);
       CHECK_PIXEL(DOWN,  y > 0,            k - width);
@@ -273,30 +269,30 @@ long MORPH_SEGMENTATION(long region[],
 #undef CHECK_PIXEL
     }
 
-    if (nb) {
+    if (nb != NULL) {
       nb[mark - 1] = count;
     }
-    if (x0 || x1) {
+    if (x0 != NULL || x1 != NULL) {
       long xmin, xmax;
       xmin = xmax = index[0]%width;
-      for (j=1 ; j<count ; ++j) {
+      for (long j = 1; j < count; ++j) {
         x = index[j]%width;
         if (x < xmin) xmin = x;
         if (x > xmax) xmax = x;
       }
-      if (x0) x0[mark - 1] = xmin;
-      if (x1) x1[mark - 1] = xmax;
+      if (x0 != NULL) x0[mark - 1] = xmin;
+      if (x1 != NULL) x1[mark - 1] = xmax;
     }
-    if (y0 || y1) {
+    if (y0 != NULL || y1 != NULL) {
       long ymin, ymax;
       ymin = ymax = index[0]/width;
-      for (j=1 ; j<count ; ++j) {
-        y = index[j]/width;
+      for (long j = 1; j < count; ++j) {
+        long y = index[j]/width;
         if (y < ymin) ymin = y;
         if (y > ymax) ymax = y;
       }
-      if (y0) y0[mark - 1] = ymin;
-      if (y1) y1[mark - 1] = ymax;
+      if (y0 != NULL) y0[mark - 1] = ymin;
+      if (y1 != NULL) y1[mark - 1] = ymax;
     }
 
     ++mark;

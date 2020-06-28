@@ -37,16 +37,16 @@ extern void yeti_convolve_z(double dst[], const double src[], int stride,
 /*---------------------------------------------------------------------------*/
 /* OPERATIONS FOR COMPLEX DATA TYPE */
 
-#define _(name, op, real_t)						      \
-void name(real_t dst[], const real_t src[], int stride, int n, int nafter,    \
-          const real_t ker[], int w, int scale, int border, real_t ws[])      \
-{									      \
-  op(dst,   src,   2*stride, n, nafter, ker, w, scale, border, ws);	      \
-  op(dst+1, src+1, 2*stride, n, nafter, ker, w, scale, border, ws);	      \
+#define ENCODE(name, op, real_t)                                           \
+void name(real_t dst[], const real_t src[], int stride, int n, int nafter, \
+          const real_t ker[], int w, int scale, int border, real_t ws[])   \
+{								           \
+  op(dst,   src,   2*stride, n, nafter, ker, w, scale, border, ws);	   \
+  op(dst+1, src+1, 2*stride, n, nafter, ker, w, scale, border, ws);        \
 }
-_(yeti_convolve_c, yeti_convolve_f, float)
-_(yeti_convolve_z, yeti_convolve_d, double)
-#undef _
+ENCODE(yeti_convolve_c, yeti_convolve_f, float)
+ENCODE(yeti_convolve_z, yeti_convolve_d, double)
+#undef ENCODE
 
 /*---------------------------------------------------------------------------*/
 /* OPERATIONS FOR FLOATING POINT DATA TYPE */
@@ -72,9 +72,9 @@ static void CONVOLVE_1(real_t dst[], const real_t src[], int n,
 #endif
 
 #ifdef CONVOLVE
-void CONVOLVE(real_t *dst, const real_t *src, int stride, int n,
-              int nafter, const real_t *ker, int w, int scale,
-              int border, real_t *ws)
+void CONVOLVE(real_t* dst, const real_t* src, int stride, int n,
+              int nafter, const real_t* ker, int w, int scale,
+              int border, real_t* ws)
 {
   int i, j, k, l;
 
@@ -95,7 +95,7 @@ void CONVOLVE(real_t *dst, const real_t *src, int stride, int n,
       }
     }
   } else {
-    real_t *wp = ws+n;
+    real_t* wp = ws+n;
     for (l=0; l<nafter ; ++l) {
       for (k=0; k<stride; ++k) {
         for (j=0, i=k+stride*n*l; j<n; ++j, i+=stride) ws[j] = src[i];
@@ -109,7 +109,7 @@ void CONVOLVE(real_t *dst, const real_t *src, int stride, int n,
 
 #ifdef CONVOLVE_1
 static void CONVOLVE_1(real_t dst[], const real_t src[], int n,
-                           const real_t ker[], int w, int scale, int border)
+                       const real_t ker[], int w, int scale, int border)
 {
   int i, j, k;
   real_t sum, xl, xr;
@@ -273,7 +273,7 @@ static void CONVOLVE_1(real_t dst[], const real_t src[], int n,
         for (xl=sum=ZERO, j=-w, k=i-w ; j<=w && k<n ; ++j, ++k) {
           if (k >= 0) {
             xr = ker[j];
-            sum += xr * src[k];
+            sum += xr* src[k];
             xl  += xr;
           }
         }

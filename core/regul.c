@@ -144,7 +144,7 @@ extern rgl_roughness_penalty_t rgl_roughness_cauchy_periodic;
 
 #ifdef YORICK
 
-static long *get_vector_l(int iarg, long *ntot)
+static long* get_vector_l(int iarg, long* ntot)
 {
   if (yarg_number(iarg) != 1 || yarg_rank(iarg) > 1) {
     y_error("expecting a vector of integers");
@@ -152,7 +152,7 @@ static long *get_vector_l(int iarg, long *ntot)
   return ygeta_l(iarg, ntot, NULL);
 }
 
-static double *get_vector_d(int iarg, long *ntot)
+static double* get_vector_d(int iarg, long* ntot)
 {
   int id = yarg_number(iarg);
   if (id < 1 || id > 2 || yarg_rank(iarg) > 1) {
@@ -161,7 +161,7 @@ static double *get_vector_d(int iarg, long *ntot)
   return ygeta_d(iarg, ntot, NULL);
 }
 
-static double *get_array_d(int iarg, long *ntot, long dims[])
+static double* get_array_d(int iarg, long* ntot, long dims[])
 {
   int id = yarg_number(iarg);
   if (id < 1 || id > 2) {
@@ -170,16 +170,16 @@ static double *get_array_d(int iarg, long *ntot, long dims[])
   return ygeta_d(iarg, ntot, dims);
 }
 
-static void roughness(int argc, const char *name,
-                      rgl_roughness_penalty_t *rgl,
+static void roughness(int argc, const char* name,
+                      rgl_roughness_penalty_t* rgl,
                       int n)
 {
   double penalty;
   char buf[100];
-  double *arr, *grd, *hyp;
+  double* arr, *grd, *hyp;
   long dims[Y_DIMSIZE];
   long off[Y_DIMSIZE - 1], dim[Y_DIMSIZE - 1];
-  long *offset;
+  long* offset;
   long j, ndims, ref, noffs, nhyps, ntot;
   int iarg, type, flag;
 
