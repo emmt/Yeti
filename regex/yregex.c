@@ -61,10 +61,10 @@
 #     include <alloca.h>
 #    else
 #     ifdef __hpux
-         void *alloca ();
+         void* alloca ();
 #     else
 #      if !defined __OS2__ && !defined WIN32
-         char *alloca ();
+         char* alloca ();
 #      else
 #       include <malloc.h>       /* OS/2 defines alloca in here */
 #      endif
@@ -122,7 +122,7 @@
 
 /* Redefine definition of YError to avoid GCC warnings (about uninitialized
    variables or reaching end of non-void function): */
-extern void YError(const char *msg) __attribute__ ((noreturn));
+extern void YError(const char* msg) __attribute__ ((noreturn));
 
 /*---------------------------------------------------------------------------*/
 /* MISCELLANEOUS PRIVATE ROUTINES */
@@ -132,11 +132,11 @@ extern void YError(const char *msg) __attribute__ ((noreturn));
 typedef struct ws ws_t;
 struct ws {
   /* Common part of all Yorick's DataBlocks: */
-  int references;     /* reference counter */
-  Operations *ops;    /* virtual function table */
+  int  references; /* reference counter */
+  Operations* ops; /* virtual function table */
 };
 
-static void FreeWS(void *addr);
+static void FreeWS(void* addr);
 static UnaryOp PrintWS;
 
 extern PromoteOp PromXX;
@@ -148,8 +148,8 @@ extern BinaryOp AssignX, MatMultX;
 extern UnaryOp EvalX, SetupX, PrintX;
 extern MemberOp GetMemberX;
 
-Operations wsOps= {
-  &FreeWS, T_OPAQUE, 0, /* promoteID= */ T_STRING /* means illegal */,
+Operations wsOps = {
+  &FreeWS, T_OPAQUE, 0, /* promoteID = */ T_STRING /* means illegal */,
   "workspace",
   {&PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX},
   &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX,
@@ -162,28 +162,28 @@ Operations wsOps= {
 
 /* FreeRE is automatically called by Yorick to delete a regex data block
    that is no more referenced. */
-static void FreeWS(void *addr)
+static void FreeWS(void* addr)
 {
   p_free(addr);
 }
 
 /* PrintRE is used by Yorick's info command. */
-static void PrintWS(Operand *op)
+static void PrintWS(Operand* op)
 {
   ForceNewline();
   PrintFunc("object of type: workspace");
   ForceNewline();
 }
 
-static void *my_push_workspace(size_t nbytes)
+static void* my_push_workspace(size_t nbytes)
 {
   /* EXTRA is the number of bytes needed to store DataBlock header rounded
      up to the size of a double (to avoid alignment errors). */
   const size_t extra = MY_ROUND_UP(sizeof(ws_t), sizeof(double));
-  ws_t *ws = p_malloc(nbytes + extra);
+  ws_t* ws = p_malloc(nbytes + extra);
   ws->references = 0;
   ws->ops = &wsOps;
-  return (void *)((char *)PushDataBlock(ws) + extra);
+  return (void*)((char*)PushDataBlock(ws) + extra);
 }
 
 /* tmpDims is a global temporary for Dimension lists under construction -- you
@@ -192,8 +192,8 @@ static void *my_push_workspace(size_t nbytes)
    first. */
 static void my_reset_dims(void)
 {
-  if (tmpDims) {
-    Dimension *dims = tmpDims;
+  if (tmpDims != NULL) {
+    Dimension* dims = tmpDims;
     tmpDims = NULL;
     FreeDimension(dims);
   }
@@ -215,7 +215,7 @@ static void my_reset_dims(void)
  *   Q = string
  *   P = pointer
  */
-#define MY_PUSH_NEW_ARRAY(SDEF, DIMS)((Array *)PushDataBlock(NewArray(SDEF, DIMS)))
+#define MY_PUSH_NEW_ARRAY(SDEF, DIMS)((Array*)PushDataBlock(NewArray(SDEF, DIMS)))
 #define MY_PUSH_NEW_ARRAY_C(DIMS) MY_PUSH_NEW_ARRAY(&charStruct,    DIMS)
 #define MY_PUSH_NEW_ARRAY_S(DIMS) MY_PUSH_NEW_ARRAY(&shortStruct,   DIMS)
 #define MY_PUSH_NEW_ARRAY_I(DIMS) MY_PUSH_NEW_ARRAY(&intStruct,     DIMS)
@@ -246,36 +246,36 @@ static void my_reset_dims(void)
         array  contents.   See  MY_PUSH_NEW_ARRAY  for side  effects  and
         restrictions. */
 
-static char *my_strncpy(const char *s, size_t len)
+static char* my_strncpy(const char* s, size_t len)
 {
-  if (s) {
-    char *t = p_stralloc(len);
+  if (s != NULL) {
+    char* t = p_stralloc(len);
     memcpy(t, s, len);
     t[len] = '\0';
     return t;
   }
-  return (char *)0;
+  return (char*)0;
 }
 
-static int my_get_boolean(Symbol *s)
+static int my_get_boolean(Symbol* s)
 {
   if (s->ops == &referenceSym) s = &globTab[s->index];
-  if (s->ops == &intScalar)    return (s->value.i != 0);
-  if (s->ops == &longScalar)   return (s->value.l != 0L);
+  if (s->ops == &intScalar   ) return (s->value.i != 0);
+  if (s->ops == &longScalar  ) return (s->value.l != 0L);
   if (s->ops == &doubleScalar) return (s->value.d != 0.0);
   if (s->ops == &dataBlockSym) {
     Operand op;
     s->ops->FormOperand(s, &op);
-    if (! op.type.dims) {
+    if (op.type.dims == NULL) {
       switch (op.ops->typeID) {
-      case T_CHAR:   return (*(char   *)op.value != 0);
-      case T_SHORT:  return (*(short  *)op.value != 0);
-      case T_INT:    return (*(int    *)op.value != 0);
-      case T_LONG:   return (*(long   *)op.value != 0L);
-      case T_FLOAT:  return (*(float  *)op.value != 0.0F);
-      case T_DOUBLE: return (*(double *)op.value != 0.0);
-      case T_COMPLEX:return (((double *)op.value)[0] != 0.0 ||
-                             ((double *)op.value)[1] != 0.0);
+      case T_CHAR:   return (*(char*  )op.value != 0);
+      case T_SHORT:  return (*(short* )op.value != 0);
+      case T_INT:    return (*(int*   )op.value != 0);
+      case T_LONG:   return (*(long*  )op.value != 0L);
+      case T_FLOAT:  return (*(float* )op.value != 0.0F);
+      case T_DOUBLE: return (*(double*)op.value != 0.0);
+      case T_COMPLEX:return (((double*)op.value)[0] != 0.0 ||
+                             ((double*)op.value)[1] != 0.0);
       case T_STRING: return (op.value != NULL);
       case T_VOID:   return 0;
       }
@@ -291,46 +291,59 @@ static void my_unknown_keyword(void)
 /*---------------------------------------------------------------------------*/
 /* SUPPORT FOR DYNAMIC STRING */
 
-static char  *ds_string = NULL;
+static char*  ds_string = NULL;
 static size_t ds_size   = 0;
 static size_t ds_length = 0;
 
 static void  ds_reset(void);
 static void  ds_free(void);
-static char *ds_copy(void);
-static void  ds_append(const char *str, size_t len);
+static char* ds_copy(void);
+static void  ds_append(const char* str, size_t len);
 
 static void ds_reset(void)
 {
-  if (ds_string) ds_string[0] = 0;
-  else           ds_size = 0;
+  if (ds_string != NULL) {
+    ds_string[0] = 0;
+  } else {
+    ds_size = 0;
+  }
   ds_length = 0;
 }
 
 static void ds_free(void)
 {
-  char *tmp = ds_string;
+  char* tmp = ds_string;
   ds_string = NULL;
   ds_length = 0;
   ds_size = 0;
-  if (tmp) p_free(tmp);
+  if (tmp != NULL) {
+    p_free(tmp);
+  }
 }
 
-static void ds_append(const char *str, size_t len)
+static void ds_append(const char* str, size_t len)
 {
-  if (len) {
-    size_t newlen;
-    if (! ds_string) ds_length = ds_size = 0; /* in case of interrupts... */
-    if ((newlen = ds_length + len) >= ds_size) {
-      char *newstr, *oldstr = ds_string;
+  if (len > 0) {
+    if (ds_string == NULL) {
+      ds_length = ds_size = 0; /* in case of interrupts... */
+    }
+    size_t newlen = ds_length + len;
+    if (newlen >= ds_size) {
+      char* oldstr = ds_string;
       size_t newsiz = 128;
-      while (newlen >= newsiz) newsiz *= 2;
-      newstr = p_malloc(newsiz);
-      if (ds_length) memcpy(newstr, ds_string, ds_length);
+      while (newsiz < newlen) {
+        newsiz *= 2;
+      }
+      char* newstr = p_malloc(newsiz);
+      if (ds_length > 0) {
+        memcpy(newstr, ds_string, ds_length);
+      }
       newstr[ds_length] = 0;
       ds_string = newstr;
       ds_size = newsiz;
-      if (oldstr) p_free(oldstr);
+      if (oldstr != NULL) {
+        p_free(oldstr);
+      }
     }
     ds_string[newlen] = 0;
     memcpy(ds_string + ds_length, str, len);
@@ -338,9 +351,11 @@ static void ds_append(const char *str, size_t len)
   }
 }
 
-static char *ds_copy(void)
+static char* ds_copy(void)
 {
-  if (! ds_string) ds_length = ds_size = 0; /* in case of interrupts... */
+  if (ds_string == NULL) {
+    ds_length = ds_size = 0; /* in case of interrupts... */
+  }
   return my_strncpy(ds_string, ds_length);
 }
 
@@ -350,15 +365,15 @@ static char *ds_copy(void)
 typedef struct regdb regdb_t;
 struct regdb {
   /* Common part of all Yorick's DataBlocks: */
-  int references;     /* reference counter */
-  Operations *ops;    /* virtual function table */
+  int  references; /* reference counter */
+  Operations* ops; /* virtual function table */
 
   /* Specific part for this kind of object: */
-  int         cflags; /* flags used to compile the regular expression */
-  regex_t     regex;  /* compiled regular expression */
+  int      cflags; /* flags used to compile the regular expression */
+  regex_t   regex; /* compiled regular expression */
 };
 
-static void FreeRE(void *addr);
+static void FreeRE(void* addr);
 static UnaryOp PrintRE;
 
 extern PromoteOp PromXX;
@@ -370,8 +385,8 @@ extern BinaryOp AssignX, MatMultX;
 extern UnaryOp EvalX, SetupX, PrintX;
 extern MemberOp GetMemberX;
 
-Operations regexOps= {
-  &FreeRE, T_OPAQUE, 0, /* promoteID= */ T_STRING /* means illegal */,
+Operations regexOps = {
+  &FreeRE, T_OPAQUE, 0, /* promoteID = */ T_STRING /* means illegal */,
   "regex",
   {&PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX},
   &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX,
@@ -384,36 +399,35 @@ Operations regexOps= {
 
 /* FreeRE is automatically called by Yorick to delete a regex data block
    that is no more referenced. */
-static void FreeRE(void *addr)
+static void FreeRE(void* addr)
 {
-  regfree(&(((regdb_t *)addr)->regex));
+  regfree(&(((regdb_t*)addr)->regex));
   p_free(addr);
 }
 
 /* PrintRE is used by Yorick's info command. */
-static void PrintRE(Operand *op)
+static void PrintRE(Operand* op)
 {
-  regdb_t *re = (regdb_t *)op->value;
+  regdb_t* re = (regdb_t*)op->value;
   char line[140];
   int flag = 0, cflags = re->cflags;
-
   sprintf(line, "compiled regular expression (%d ref.): nsub=%d; flags=",
           re->references, (int)re->regex.re_nsub);
-  if (! (cflags&REG_EXTENDED)) {
+  if ((cflags&REG_EXTENDED) == 0) {
     strcat(line, "basic");
     flag = 1;
   }
-  if (cflags&REG_ICASE) {
+  if ((cflags&REG_ICASE) != 0) {
     if (flag) strcat(line, "|");
     strcat(line, "icase");
     flag = 1;
   }
-  if (cflags&REG_NOSUB) {
+  if ((cflags&REG_NOSUB) != 0) {
     if (flag) strcat(line, "|");
     strcat(line, "nosub");
     flag = 1;
   }
-  if (cflags&REG_NEWLINE) {
+  if ((cflags&REG_NEWLINE) != 0) {
     if (flag) strcat(line, "|");
     strcat(line, "newline");
     flag = 1;
@@ -428,15 +442,15 @@ static void PrintRE(Operand *op)
 
 extern BuiltIn Y_regcomp, Y_regmatch, Y_regsub;
 
-static const char *regex_error_message(int errcode, const regex_t *preg);
-/*	Return regular expression error message stored in a static buffer. */
+static const char* regex_error_message(int errcode, const regex_t* preg);
+/*      Return regular expression error message stored in a static buffer. */
 
 #define DEFAULT_CFLAGS (REG_EXTENDED)
 
-static regdb_t *new_regdb(const char *regex, int cflags);
+static regdb_t* new_regdb(const char* regex, int cflags);
 /*----- Compile regular expression and return new data-block. */
 
-static regdb_t *get_regdb(Symbol *stack, int cflags);
+static regdb_t* get_regdb(Symbol* stack, int cflags);
 /*----- Return compiled regular expression data-block for stack symbol STACK.
         If STACK is a scalar string, it gets compiled according to CFLAGS
         or with DEFAULT_CFLAGS if CFLAGS=-1 (see man page of regcomp);
@@ -472,11 +486,6 @@ static void initialize(void)
 
 void Y_regcomp(int argc)
 {
-  Symbol *stack, *regex = NULL;
-  DataBlock *db;
-  Array *array;
-  int cflags=DEFAULT_CFLAGS;
-
   /* Initialize internals as needed. */
   if (first_time) {
     initialize();
@@ -484,10 +493,14 @@ void Y_regcomp(int argc)
   }
 
   /* Parse arguments from first to last one. */
-  for (stack=sp-argc+1 ; stack<=sp ; ++stack) {
-    if (stack->ops) {
-      /* Normal argument. */
-      if (regex) goto badNArgs;
+  Symbol* regex = NULL;
+  int cflags = DEFAULT_CFLAGS;
+  for (Symbol* stack = sp-argc+1 ; stack <= sp ; ++stack) {
+    if (stack->ops != NULL) {
+      /* Positional argument. */
+      if (regex != NULL) {
+        goto badNArgs;
+      }
       regex = (stack->ops == &referenceSym) ? &globTab[stack->index] : stack;
     } else {
       /* Must be a keyword: sp[i] is for keyword and sp[i+1] for
@@ -507,17 +520,21 @@ void Y_regcomp(int argc)
       }
     }
   }
-  if (! regex) {
+  if (regex == NULL) {
   badNArgs:
     YError("regcomp takes exactly 1 non-keyword argument");
   }
-  if (regex->ops == &referenceSym) regex = &globTab[regex->index];
+  if (regex->ops == &referenceSym) {
+    regex = &globTab[regex->index];
+  }
+  DataBlock* db;
+  Array* arr;
   if (regex->ops != &dataBlockSym ||
       (db = regex->value.db)->ops != &stringOps ||
-      (array = (Array *)db)->type.dims != NULL) {
+      (arr = (Array*)db)->type.dims != NULL) {
     YError("expecting scalar string");
   }
-  db = (DataBlock *)new_regdb(array->value.q[0], cflags);
+  db = (DataBlock*)new_regdb(arr->value.q[0], cflags);
   PushDataBlock(db);
 }
 
@@ -525,22 +542,6 @@ void Y_regcomp(int argc)
 
 void Y_regmatch(int argc)
 {
-  void **outPtr;     /* array of pointers to outputs */
-  long  *outIndex;   /* array of output index */
-  long   nmatch;     /* number of required outputs */
-  regoff_t start_option=1; /* starting index in matching string */
-  regoff_t start=1;        /* actual starting index in matching string */
-  regoff_t len;            /* length of input string */
-  regmatch_t *pmatch;
-  Dimension *dims = NULL;
-  Symbol *stack, *last_arg, *regexSymbol= NULL;
-  regdb_t *re;
-  regex_t *regex;
-  char **input=NULL, *str;
-  int indices=0, eflags=0, tflags=DEFAULT_CFLAGS, cflags=-1;
-  long i, number, j;
-  int status, *match;
-
   /* Initialize internals as needed. */
   if (first_time) {
     initialize();
@@ -549,11 +550,16 @@ void Y_regmatch(int argc)
 
   /* First pass on argument list to parse keywords and figure out the number
      of outputs requested. */
-  last_arg = sp;
-  nmatch = -2;
-  for (stack = last_arg+1-argc ; stack <= last_arg ; ++stack) {
-    if (stack->ops) {
-      /* Normal argument. */
+  Symbol* last_arg = sp;
+  long nmatch = -2; /* number of required outputs */
+  regoff_t start_option = 1; /* starting index in matching string */
+  int indices = 0;
+  int tflags = DEFAULT_CFLAGS;
+  int cflags = -1;
+  int eflags = 0;
+  for (Symbol* stack = last_arg + 1 - argc; stack <= last_arg; ++stack) {
+    if (stack->ops != NULL) {
+      /* Positional argument. */
       ++nmatch;
     } else {
       /* Keyword argument: sp[i] is for keyword name and sp[i+1] for
@@ -588,15 +594,18 @@ void Y_regmatch(int argc)
   if (nmatch < 0) YError("regmatch takes at least 2 non-keyword arguments");
 
   /* Allocate enough workspace for outputs. */
+  void**      outPtr; /* array of pointers to outputs */
+  long*     outIndex; /* array of output index */
+  regmatch_t* pmatch;
   if (nmatch > 0) {
     CheckStack(nmatch + 4);
     last_arg = sp; /* in case stack was relocated */
-#define ALLOC_WS(PTR, NUMBER) PTR=my_push_workspace((NUMBER)*sizeof(*(PTR)))
-    ALLOC_WS(outPtr,   nmatch);
-    ALLOC_WS(outIndex, nmatch);
-    ALLOC_WS(pmatch,   nmatch);
+#define PUSH_WRK(PTR, NUMBER) PTR = my_push_workspace((NUMBER)*sizeof(*(PTR)))
+    PUSH_WRK(outPtr,   nmatch);
+    PUSH_WRK(outIndex, nmatch);
+    PUSH_WRK(pmatch,   nmatch);
     /*cflags|= REG_EXTENDED;*/
-#undef ALLOC_WS
+#undef PUSH_WRK
   } else {
     outPtr   = NULL;
     outIndex = NULL;
@@ -606,47 +615,51 @@ void Y_regmatch(int argc)
 
   /* Parse non-keyword arguments from first to last one (must be done
      _after_ call to CheckStack). */
-  j = 0;
-  for (stack = last_arg+1-argc ; stack <= last_arg ; ++stack) {
-    if (stack->ops) {
-      /* Normal argument. */
-      if (! regexSymbol) {
-        regexSymbol = stack;
-      } else if (! input) {
-        input = YGet_Q(stack, 0, &dims);
+  Symbol* regexSymbol = NULL;
+  char** input = NULL;
+  Dimension* dims = NULL;
+  {
+    long j = 0;
+    for (Symbol* stack = last_arg + 1 - argc; stack <= last_arg; ++stack) {
+      if (stack->ops) {
+        /* Positional argument. */
+        if (regexSymbol == NULL) {
+          regexSymbol = stack;
+        } else if (input == NULL) {
+          input = YGet_Q(stack, 0, &dims);
+        } else {
+          outPtr[j] = stack;
+          outIndex[j] = (stack->ops == &referenceSym) ? stack->index : -1;
+          ++j;
+        }
       } else {
-        outPtr[j] = stack;
-        outIndex[j] = (stack->ops == &referenceSym) ? stack->index : -1;
-        ++j;
+        /* Keyword argument (skip it). */
+        ++stack;
       }
-    } else {
-      /* Keyword argument (skip it). */
-      ++stack;
     }
   }
 
   /* Get/compile regular expression. */
-  re = get_regdb(regexSymbol, cflags);
-  regex = &re->regex;
+  regdb_t* re = get_regdb(regexSymbol, cflags);
+  regex_t* regex = &re->regex;
 
   /* Push result on top of the stack (must be done *BEFORE* other
      outputs). */
-  match = MY_PUSH_NEW_I(dims);
+  int* match = MY_PUSH_NEW_I(dims);
 
   /* Prepare output arrays. */
-  number = TotalNumber(dims);
+  long number = TotalNumber(dims);
   if (indices) {
-    Dimension *ptr;
     my_reset_dims();
     MY_APPEND_DIMENSION(2, 1);
-    for (ptr=dims ; ptr!=NULL ; ptr=ptr->next) {
+    for (Dimension* ptr = dims; ptr != NULL; ptr = ptr->next) {
       MY_APPEND_DIMENSION(ptr->number, ptr->origin);
     }
-    for (j=0 ; j<nmatch ; ++j) {
+    for (long j = 0; j < nmatch; ++j) {
       outPtr[j] = MY_PUSH_NEW_L(tmpDims);
     }
   } else {
-    for (j=0 ; j<nmatch ; ++j) {
+    for (long j = 0; j < nmatch; ++j) {
       outPtr[j] = MY_PUSH_NEW_Q(dims);
     }
   }
@@ -655,10 +668,11 @@ void Y_regmatch(int argc)
 # define OUTPUT(TYPE, I1, I2) ((TYPE*)(outPtr[I1]))[I2]
 # define OUTPUT_L(I1, I2)     OUTPUT(long, I1,I2)
 # define OUTPUT_Q(I1, I2)     OUTPUT(char*,I1,I2)
-  for (i=0 ; i<number ; i++) {
-    str = input[i];
-    if (str && start_option != 1) {
-      len = strlen(str);
+  for (long i = 0; i < number; ++i) {
+    char* str = input[i];
+    regoff_t start = 1; /* actual starting index in matching string */
+    if (str != NULL && start_option != 1) {
+      regoff_t len = strlen(str);
       if (start_option >= 1) {
         if ((start = start_option) <= len) {
           str += start - 1;
@@ -673,26 +687,27 @@ void Y_regmatch(int argc)
         }
       }
     }
-    if (! str || (status = regexec(regex, str, nmatch,
-                                   pmatch, eflags)) == REG_NOMATCH) {
+    int status = (str == NULL ? REG_NOMATCH :
+                  regexec(regex, str, nmatch, pmatch, eflags));
+    if (status == REG_NOMATCH) {
       /* No match. */
       match[i] = 0;
       if (indices) {
-        for (j=0 ; j<nmatch ; ++j) {
+        for (long j = 0; j < nmatch; ++j) {
           OUTPUT_L(j, 2*i)   = -1;
           OUTPUT_L(j, 2*i+1) = -1;
         }
       }
-    } else if (! status) {
+    } else if (status == 0) {
       /* Match (yorick: add START to indices). */
       match[i] = 1;
       if (indices) {
-        for (j=0 ; j<nmatch ; ++j) {
+        for (long j = 0; j < nmatch; ++j) {
           OUTPUT_L(j, 2*i)   = pmatch[j].rm_so + start;
           OUTPUT_L(j, 2*i+1) = pmatch[j].rm_eo + start;
         }
       } else {
-        for (j=0 ; j<nmatch ; ++j) {
+        for (long j = 0; j < nmatch; ++j) {
           if (pmatch[j].rm_eo > pmatch[j].rm_so) {
             OUTPUT_Q(j, i) = my_strncpy(str + pmatch[j].rm_so,
                                         pmatch[j].rm_eo - pmatch[j].rm_so);
@@ -709,9 +724,12 @@ void Y_regmatch(int argc)
 
   /* Pop outputs in place (from last to first one) and left result on top
      of the stack. */
-  for (j=nmatch-1 ; j>=0 ; --j) {
-    if (outIndex[j]<0) Drop(1);
-    else PopTo(&globTab[outIndex[j]]);
+  for (long j = nmatch - 1; j >= 0; --j) {
+    if (outIndex[j]<0) {
+      Drop(1);
+    } else {
+      PopTo(&globTab[outIndex[j]]);
+    }
   }
 }
 
@@ -719,26 +737,6 @@ void Y_regmatch(int argc)
 
 void Y_regsub(int argc)
 {
-  regmatch_t *match;
-  Symbol *stack, *regexSymbol=NULL;
-  regdb_t *re;
-  regex_t *regex;
-  Dimension *dims= NULL;
-  const char *substr= NULL, *src, *end;
-  char **input= NULL, **output, *dst;
-  int all=0, eflags=0, tflags=DEFAULT_CFLAGS, cflags=-1;
-  long len, number, nsub, srclen, index;
-  int i, j, c, status, nnodes, argnum;
-  size_t part1;
-  struct Node {
-    /* This structure describes a node in the substitution string.  An
-       array of such nodes provides some sort of compiled version of the
-       substitution string. */
-    const char *p; /* non-NULL means textual string
-                      NULL means index of sub-expression */
-    long l;        /* length of textual string or index of sub-expression */
-  } *node;
-
   /* Initialize internals as needed. */
   if (first_time) {
     initialize();
@@ -746,10 +744,18 @@ void Y_regsub(int argc)
   }
 
   /* Parse arguments from first to last one. */
-  argnum = 0;
-  for (stack=sp+1-argc ; stack<=sp ; ++stack) {
-    if (stack->ops) {
-      /* Normal argument. */
+  Symbol* regexSymbol = NULL;
+  char** input = NULL;
+  const char* substr = NULL;
+  Dimension* dims = NULL;
+  int argnum = 0;
+  int tflags = DEFAULT_CFLAGS;
+  int cflags = -1;
+  int eflags = 0;
+  int all = 0;
+  for (Symbol* stack = sp + 1 - argc; stack <= sp; ++stack) {
+    if (stack->ops != NULL) {
+      /* Positional argument. */
       switch (++argnum) {
       case 1: regexSymbol = stack; break;
       case 2: input = YGet_Q(stack, 0, &dims); break;
@@ -790,57 +796,79 @@ void Y_regsub(int argc)
   }
 
   /* Get/compile regular expression. */
-  re = get_regdb(regexSymbol, cflags);
-  regex = &re->regex;
+  regdb_t* re = get_regdb(regexSymbol, cflags);
+  regex_t* regex = &re->regex;
 
   /* Make sure the stack can holds 2 more items: a temporary workspace and
      the result of the call. */
   CheckStack(2);
 
+  /* This structure describes a node in the substitution string.  An array of
+     such nodes provides some sort of compiled version of the substitution
+     string. */
+  typedef struct _Node {
+    const char* p; /* non-NULL means textual string
+                      NULL means index of sub-expression */
+    long l;        /* length of textual string or index of sub-expression */
+  } Node;
+
   /* Allocate workspace:   NSUB+1  regmatch_t    for MATCH array
    *                     + LEN     struct Node   for NODE array
-   *			 + LEN+1   char          for literal parts of SUBSTR.
+   *                     + LEN+1   char          for literal parts of SUBSTR.
    * Notes: 1. Allocate as many nodes as characters in SUBSTR since this is
    *           the maximum possible number of nodes; furthermore the
-   *	       allocation is done in one chunk.
+   *           allocation is done in one chunk.
    *        2. Round up sizes of different parts to avoid alignment errors.
    */
-  len = (substr ? strlen(substr) : 0);
-  nsub = regex->re_nsub; /* number of subexpressions in compiled regex */
-  part1 = (nsub + 1)*sizeof(match[0]);
-  part1 = MY_ROUND_UP(part1, sizeof(node[0]));
-  match = my_push_workspace(part1 + len*(1 + sizeof(node[0])) + 1);
-  node = (void *)((char *)match + part1);
-  dst  = (char *)(node + len);
+  long len = (substr != NULL ? strlen(substr) : 0);
+  long nsub = regex->re_nsub; /* number of subexpressions in compiled regex */
+  size_t part1 = (nsub + 1)*sizeof(regmatch_t);
+  part1 = MY_ROUND_UP(part1, sizeof(Node));
+  regmatch_t* match = my_push_workspace(part1 + len*(1 + sizeof(Node)) + 1);
+  Node* node = (Node*)((char*)match + part1);
+  char* dst  = (char*)(node + len);
 
   /* Compile substitution string SUBSTR by splitting it into nodes. */
-  nnodes = 0;
-  if (len) {
-#define ADD_NODE(P,L) node[nnodes].p=(P);  node[nnodes++].l=(L)
-    int l = 0;
-    for (i=0 ; ; ) {
-      c = substr[i++];
+  long nnodes = 0;
+  if (len > 0) {
+#define ADD_NODE(P,L) node[nnodes].p = (P); node[nnodes++].l = (L)
+    long l = 0;
+    for (long i = 0; ; ) {
+      int c = substr[i++];
 #if 0
       if (c == '&') {
-        if (l) { ADD_NODE(dst,l); dst[l]=0; dst+=l+1; l=0; }
+        if (l != 0) {
+          ADD_NODE(dst,l);
+          dst[l] = 0;
+          dst += l + 1;
+          l = 0;
+        }
         ADD_NODE(NULL, 0);
         continue;
       }
 #endif
       if (c == '\\') {
         c = substr[i++];
-        index = c - '0';
+        long index = c - '0';
         if (index >= 0 && index <= 9) {
           if (index > nsub)
             YError("sub-expression index overreach number of sub-expressions");
-          if (l) { ADD_NODE(dst,l); dst[l]=0; dst+=l+1; l=0; }
+          if (l != 0) {
+            ADD_NODE(dst,l);
+            dst[l] = 0;
+            dst += l + 1;
+            l = 0;
+          }
           ADD_NODE(NULL, index);
           continue;
         }
         if (c == 0) YError("bad final backslash in substitution string");
-      } else if (c==0) {
+      } else if (c == 0) {
         /* End of string. */
-        if (l) { ADD_NODE(dst,l); dst[l]=0; }
+        if (l != 0) {
+          ADD_NODE(dst,l);
+          dst[l] = 0;
+        }
         break;
       }
       /* Literal character. */
@@ -850,23 +878,24 @@ void Y_regsub(int argc)
   }
 
   /* Allocate output string array and enough workspace. */
-  number = TotalNumber(dims);
-  output = MY_PUSH_NEW_Q(dims);
+  long number = TotalNumber(dims);
+  char** output = MY_PUSH_NEW_Q(dims);
 
   /* Match regular expression against input string(s). */
-  for (i=0 ; i<number ; ++i) {
-    if (! (src = input[i])) {
+  for (long i = 0; i < number; ++i) {
+    const char* src = input[i];
+    if (src == NULL) {
       output[i] = NULL; /* FIXME: not needed? */
       continue;
     }
 
-    srclen = strlen(src);
-    end = src + srclen;
+    long srclen = strlen(src);
+    const char* end = src + srclen;
     tflags = eflags;
     ds_reset();
     for (;;) {
-      status = regexec(regex, src, nsub+1, match, tflags);
-      if (status) {
+      int status = regexec(regex, src, nsub+1, match, tflags);
+      if (status != 0) {
         /* No match or error. */
         if (status == REG_NOMATCH) break;
         YError(regex_error_message(status, regex));
@@ -878,13 +907,13 @@ void Y_regsub(int argc)
       if (len > 0) ds_append(src, len);
 
       /* Substitute each nodes. */
-      for (j=0 ; j<nnodes ; ++j) {
-        if (node[j].p) {
+      for (long j = 0; j < nnodes; ++j) {
+        if (node[j].p != NULL) {
           /* Copy literal part. */
           ds_append(node[j].p, node[j].l);
         } else {
           /* Substitute subexpression. */
-          index = node[j].l;
+          long index = node[j].l;
           if (match[index].rm_eo > match[index].rm_so) {
             ds_append(src + match[index].rm_so,
                       match[index].rm_eo - match[index].rm_so);
@@ -915,29 +944,27 @@ void Y_regsub(int argc)
 
 /*---------------------------------------------------------------------------*/
 
-static regdb_t *new_regdb(const char *regex, int cflags)
+static regdb_t* new_regdb(const char* regex, int cflags)
 {
-  regdb_t *re;
-  int status;
-  if (! regex) YError("unexpected nil string");
-  re = p_malloc(sizeof(regdb_t));
+  if (regex == NULL) YError("unexpected nil string");
+  regdb_t* re = p_malloc(sizeof(regdb_t));
   re->references = 0;
   re->ops = &regexOps;
   re->cflags = cflags;
-  status = regcomp(&re->regex, regex, cflags);
-  if (status) {
-    const char *msg = regex_error_message(status, &re->regex);
+  int status = regcomp(&re->regex, regex, cflags);
+  if (status != 0) {
+    const char* msg = regex_error_message(status, &re->regex);
     FreeRE(re);
     YError(msg);
   }
   return re;
 }
 
-static regdb_t *get_regdb(Symbol *stack, int cflags)
+static regdb_t* get_regdb(Symbol* stack, int cflags)
 {
-  Symbol *s = (stack->ops == &referenceSym) ? &globTab[stack->index] : stack;
+  Symbol* s = (stack->ops == &referenceSym) ? &globTab[stack->index] : stack;
   if (s->ops == &dataBlockSym) {
-    DataBlock *db = s->value.db;
+    DataBlock* db = s->value.db;
     if (db->ops == &regexOps) {
       if (cflags != -1)
         YError("attempt to modify flags in compiled regular expression");
@@ -946,19 +973,19 @@ static regdb_t *get_regdb(Symbol *stack, int cflags)
         stack->value.db = Ref(db);
         stack->ops = &dataBlockSym; /* change ops only AFTER value updated */
       }
-      return (regdb_t *)db;
+      return (regdb_t*)db;
     }
     if (db->ops == &stringOps) {
-      Array *array = (Array *)db;
-      if (! array->type.dims) {
+      Array* array = (Array*)db;
+      if (array->type.dims == NULL) {
         /* Compile regular expression and store it into a new
            data block that is returned. */
-        regdb_t *re = new_regdb(array->value.q[0],
+        regdb_t* re = new_regdb(array->value.q[0],
                                 (cflags == -1 ? DEFAULT_CFLAGS : cflags));
-        db = (stack->ops==&dataBlockSym) ? stack->value.db : NULL;
-        stack->value.db = (DataBlock *)re;
+        db = (stack->ops == &dataBlockSym) ? stack->value.db : NULL;
+        stack->value.db = (DataBlock*)re;
         stack->ops = &dataBlockSym;
-        if (db) Unref(db);
+        if (db != NULL) Unref(db);
         return re;
       }
     }
@@ -971,7 +998,7 @@ static regdb_t *get_regdb(Symbol *stack, int cflags)
 
 /*---------------------------------------------------------------------------*/
 
-static const char *regex_error_message(int errcode, const regex_t *preg)
+static const char* regex_error_message(int errcode, const regex_t* preg)
 {
 #if HAVE_REGERROR
   static char errbuf[128];
