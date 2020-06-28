@@ -22,20 +22,20 @@
 #include "yio.h"
 
 /* Expand_name returns NAME after expansion. */
-static char* expand_name(const char *name);
+static char* expand_name(const char* name);
 
 /* Push an array of a given type. */
-static void* push_array(int typeid, long *dims);
+static void* push_array(int typeid, long* dims);
 
 /* Push a scalar string. */
-static void push_string(const char *value);
+static void push_string(const char* value);
 
-static char* expand_name(const char *name)
+static char* expand_name(const char* name)
 {
   return YExpandName(name);
 }
 
-static void* push_array(int typeid, long *dims)
+static void* push_array(int typeid, long* dims)
 {
   switch (typeid) {
   case Y_CHAR:    return (void*)ypush_c(dims);
@@ -52,9 +52,9 @@ static void* push_array(int typeid, long *dims)
   return 0;
 }
 
-static void push_string(const char *value)
+static void push_string(const char* value)
 {
-  ypush_q(NULL)[0] = (value ? p_strcpy((char *)value) : NULL);
+  ypush_q(NULL)[0] = (value ? p_strcpy((char*)value) : NULL);
 }
 
 #if 0 /* hack for old Yorick versions */
@@ -64,23 +64,23 @@ static int yarg_true(int iarg)
 {
   int typeid;
   long dims[Y_DIMSIZE];
-  void *ptr;
+  void* ptr;
 
   typeid = yarg_typeid(iarg);
   if (typeid >= Y_CHAR && typeid <= Y_POINTER) {
     ptr = ygeta_any(iarg, NULL, dims, NULL);
     if (! dims[0]) {
       switch (typeid) {
-      case Y_CHAR:    return (*(char   *)ptr != 0);
-      case Y_SHORT:   return (*(short  *)ptr != 0);
-      case Y_INT:     return (*(int    *)ptr != 0);
-      case Y_LONG:    return (*(long   *)ptr != 0L);
-      case Y_FLOAT:   return (*(float  *)ptr != 0.0F);
-      case Y_DOUBLE:  return (*(double *)ptr != 0.0);
-      case Y_COMPLEX: return (((double *)ptr)[0] != 0.0 ||
-                              ((double *)ptr)[1] != 0.0);
-      case Y_STRING:  return (*(ystring_t *)ptr != NULL);
-      case Y_POINTER: return (*(ypointer_t *)ptr != NULL);
+      case Y_CHAR:    return (*(char*)ptr != 0);
+      case Y_SHORT:   return (*(short*)ptr != 0);
+      case Y_INT:     return (*(int*)ptr != 0);
+      case Y_LONG:    return (*(long*)ptr != 0L);
+      case Y_FLOAT:   return (*(float*)ptr != 0.0F);
+      case Y_DOUBLE:  return (*(double*)ptr != 0.0);
+      case Y_COMPLEX: return (((double*)ptr)[0] != 0.0 ||
+                              ((double*)ptr)[1] != 0.0);
+      case Y_STRING:  return (*(ystring_t*)ptr != NULL);
+      case Y_POINTER: return (*(ypointer_t*)ptr != NULL);
       }
     }
   } else if (typeid == Y_VOID) {
@@ -119,15 +119,15 @@ static char message[2048];
 static int debug = 0;
 
 /* PRIVATE ROUTINES */
-static void *push_workspace(long nbytes);
-static void  load_pixels(TIFF *tiff);
+static void* push_workspace(long nbytes);
+static void  load_pixels(TIFF* tiff);
 static void  error_handler(const char* module, const char* fmt, va_list ap);
 static void  warning_handler(const char* module, const char* fmt, va_list ap);
 static int cmapbits(unsigned int n,
                     const uint16 r[],
                     const uint16 g[],
                     const uint16 b[]);
-static void missing_required_tag(const char *tagname);
+static void missing_required_tag(const char* tagname);
 
 /*---------------------------------------------------------------------------*/
 /* OPAQUE OBJECTS */
@@ -136,7 +136,7 @@ static void on_free(void*);
 static void on_print(void*);
 static void on_eval(void*, int);
 static void on_extract(void*, char*);
-static object_t *get_object(int iarg);
+static object_t* get_object(int iarg);
 
 static y_userobj_t tiff_type = {
   "TIFF file handle", on_free, on_print, on_eval, on_extract, NULL
@@ -236,19 +236,21 @@ struct _object {
  */
 
 struct _tag {
-  void (*push)(TIFF *tiff, int tag);
-  char *name;
+  void (*push)(TIFF* tiff, int tag);
+  char* name;
   int   tag;
   long  index; /* in globTab */
 };
 
-#define PUSH_TAG(name, type_t, pusher)				\
-static void name(TIFF *tiff, int tag)				\
-{								\
-  type_t value;							\
-  if (TIFFGetFieldDefaulted(tiff, tag, &value)) pusher(value);	\
-  else ypush_nil();						\
-}
+#define PUSH_TAG(name, type_t, pusher)                  \
+  static void name(TIFF* tiff, int tag) {               \
+    type_t value;                                       \
+    if (TIFFGetFieldDefaulted(tiff, tag, &value)) {     \
+      pusher(value);                                    \
+    } else {                                            \
+      ypush_nil();                                      \
+    }                                                   \
+  }
 PUSH_TAG(push_tag_string, char *, push_string)
 PUSH_TAG(push_tag_uint16, uint16, ypush_long)
 PUSH_TAG(push_tag_uint32, uint32, ypush_long)
@@ -257,9 +259,9 @@ PUSH_TAG(push_tag_float,  float,  ypush_double)
 PUSH_TAG(push_tag_double, double, ypush_double)
 #undef PUSH_TAG
 
-static void push_tag_colormap(TIFF *tiff, int tag)
+static void push_tag_colormap(TIFF* tiff, int tag)
 {
-  uint16 *r, *g, *b, bitsPerSample;
+  uint16* r, *g, *b, bitsPerSample;
   unsigned int i, number;
   unsigned char* cmap;
   long dims[Y_DIMSIZE];
@@ -368,8 +370,8 @@ static tag_t tag_table[] = {
 #undef TAG_STRING
 #undef TAG_COLORMAP
 
-static void tag_error(const char *errmsg, const char *tagname);
-static void tag_error(const char *errmsg, const char *tagname)
+static void tag_error(const char* errmsg, const char* tagname);
+static void tag_error(const char* errmsg, const char* tagname)
 {
   if (tagname) {
     sprintf(message, "%s \"%.40s%s\"", errmsg,
@@ -379,19 +381,19 @@ static void tag_error(const char *errmsg, const char *tagname)
   y_error(errmsg);
 }
 
-static void push_tag(object_t *this, long index)
+static void push_tag(object_t* obj, long index)
 {
-  tag_t *entry;
+  tag_t* entry;
 
   /* find TIFF tag entry in table */
   if (index == filename_index) {
-    push_string(this->path);
+    push_string(obj->path);
   } else if (index == filemode_index) {
-    push_string(this->mode);
+    push_string(obj->mode);
   } else {
     for (entry = tag_table; entry -> name; ++entry) {
       if (entry->index == index) {
-        entry->push(this->handle, entry->tag);
+        entry->push(obj->handle, entry->tag);
         return;
       }
     }
@@ -401,30 +403,28 @@ static void push_tag(object_t *this, long index)
 
 static void on_extract(void* addr, char* name)
 {
-  push_tag((object_t *)addr, yget_global(name, 0));
+  push_tag((object_t*)addr, yget_global(name, 0));
 }
 
-static void on_eval(void *addr, int argc)
+static void on_eval(void* addr, int argc)
 {
-  long index;
-  char *name;
-
   if (argc != 1) {
     y_error("expecting exactly one scalar string argument");
   }
-  name = ygets_q(argc - 1);
+  long index;
+  char* name = ygets_q(argc - 1);
   if (name) {
     index = yfind_global(name, 0);
   } else {
     index = -1L;
   }
-  push_tag((object_t *)addr, index);
+  push_tag((object_t*)addr, index);
 }
 
 
 static void error_handler(const char* module, const char* fmt, va_list ap)
 {
-  char *ptr = message;
+  char* ptr = message;
   strcpy(ptr, "TIFF");
   if (module) {
     strcat(ptr, " [");
@@ -455,25 +455,25 @@ static void warning_handler(const char* module, const char* fmt, va_list ap)
 
 /* on_free is automatically called by Yorick to cleanup object instance
    data when object is no longer referenced */
-static void on_free(void *addr)
+static void on_free(void* addr)
 {
-  object_t *this = (object_t *)addr;
-  if (this->handle) TIFFClose(this->handle);
-  if (this->path) p_free(this->path);
-  if (this->mode) p_free(this->mode);
+  object_t* obj = (object_t*)addr;
+  if (obj->handle) TIFFClose(obj->handle);
+  if (obj->path) p_free(obj->path);
+  if (obj->mode) p_free(obj->mode);
 }
 
 /* on_print is used by Yorick's info command */
-static void on_print(void *addr)
+static void on_print(void* addr)
 {
-  object_t *this = (object_t *)addr;
+  object_t* obj = (object_t*)addr;
   y_print(tiff_type.type_name, 0);
   y_print(": path=\"", 0);
-  y_print(this->path, 0);
+  y_print(obj->path, 0);
   y_print("\"", 1);
 }
 
-static void bad_arg_list(const char *function)
+static void bad_arg_list(const char* function)
 {
   sprintf(message, "bad argument list to %s function", function);
   y_error(message);
@@ -489,15 +489,11 @@ void Y_tiff_debug(int argc)
 
 void Y_tiff_open(int argc)
 {
-  object_t *this;
-  char *filename, *filemode;
-
   /* Initialization. */
   if (filename_index < 0L) {
-    tag_t *m;
     TIFFSetErrorHandler(error_handler);
     TIFFSetWarningHandler(warning_handler);
-    for (m = tag_table; m->name; ++m) {
+    for (tag_t* m = tag_table; m->name; ++m) {
       m->index = yget_global(m->name, 0);
     }
     filemode_index = yget_global("filemode", 0);
@@ -506,24 +502,23 @@ void Y_tiff_open(int argc)
   message[0] = 0;
 
   if (argc<1 || argc>2) bad_arg_list("tiff_open");
-  filename = ygets_q(argc - 1);
-  filemode = (argc >= 2 ? ygets_q(argc - 2) : "r");
+  char* filename = ygets_q(argc - 1);
+  char* filemode = (argc >= 2 ? ygets_q(argc - 2) : "r");
 
   /* Push new opaque object on the stack (which will be automatically
      destroyed in case of error). */
-  this = (object_t *)ypush_obj(&tiff_type, sizeof(object_t));
-  this->path = expand_name(filename);
-  this->mode = p_strcpy(filemode);
-  this->handle = TIFFOpen(this->path, filemode);
-  if (! this->handle) y_error(message);
+  object_t* obj = (object_t*)ypush_obj(&tiff_type, sizeof(object_t));
+  obj->path = expand_name(filename);
+  obj->mode = p_strcpy(filemode);
+  obj->handle = TIFFOpen(obj->path, filemode);
+  if (obj->handle == NULL) y_error(message);
 }
 
 void Y_tiff_read_directory(int argc)
 {
-  int result;
   if (argc != 1) bad_arg_list("tiff_read_directory");
   message[0] = 0;
-  result = TIFFReadDirectory(get_object(argc - 1)->handle);
+  int result = TIFFReadDirectory(get_object(argc - 1)->handle);
   if (! result && message[0]) y_error(message);
   ypush_int(result);
 }
@@ -531,20 +526,14 @@ void Y_tiff_read_directory(int argc)
 
 void Y_tiff_read_image(int argc)
 {
-  long dims[Y_DIMSIZE];
-  uint16 photometric, bitsPerSample;
-  uint32 width, height, depth;
-  void *raster;
-  object_t *this;
-  TIFF *tiff;
-  int stopOnError;
-
   if (argc < 1 || argc > 2) bad_arg_list("tiff_read_image");
-  this = get_object(argc - 1);
-  tiff = this->handle;
-  stopOnError = (argc >= 2 ? yarg_true(argc - 2) : 0);
+  object_t* obj = get_object(argc - 1);
+  TIFF* tiff = obj->handle;
+  int stopOnError = (argc >= 2 ? yarg_true(argc - 2) : 0);
 
   /* Get TIFF information to figure out the image type. */
+  uint16 photometric;
+  uint32 depth;
   message[0] = 0; /* reset error message buffer */
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_PHOTOMETRIC, &photometric))
     missing_required_tag("photometric");
@@ -553,6 +542,10 @@ void Y_tiff_read_image(int argc)
   if (depth != 1) y_error("TIFF depth != 1 not yet supported");
 
   /* Push image on top of the stack. */
+  void* raster;
+  long dims[Y_DIMSIZE];
+  uint16 bitsPerSample;
+  uint32 width, height;
   switch (photometric) {
   case PHOTOMETRIC_MINISWHITE: /* Grey and binary images. */
   case PHOTOMETRIC_MINISBLACK: /* Grey and binary images. */
@@ -592,19 +585,16 @@ void Y_tiff_read_pixels(int argc)
   load_pixels(get_object(argc - 1)->handle);
 }
 
-#if 0
+#if 0 /* work in progress... */
 void Y_tiff_SetField(int argc)
 {
-  object_t *this;
-  TIFF *tiff;
-
   if (argc < 1 && argc % 2 != 1) bad_arg_list("TIFFSetField");
-  this = get_object(argc - 1);
-  tiff = this->handle;
+  object_t* obj = get_object(argc - 1);
+  TIFF* tiff = obj->handle;
 }
 #endif
 
-static void missing_required_tag(const char *tagname)
+static void missing_required_tag(const char* tagname)
 {
   if (! message[0]) sprintf(message, "missing required TIFF tag \"%s\"",
                             tagname);
@@ -612,7 +602,7 @@ static void missing_required_tag(const char *tagname)
 }
 
 #if 0 /* unused */
-static void set_tag_read_only(object_t *this, tag_t *m, Symbol *s)
+static void set_tag_read_only(object_t* obj, tag_t* m, Symbol* s)
 {
   sprintf(message, "TIFF field \"%s\" is readonly", m->name);
   y_error(message);
@@ -620,8 +610,8 @@ static void set_tag_read_only(object_t *this, tag_t *m, Symbol *s)
 #endif /* unused */
 
 #if 0 /* unused */
-static void cannot_set_member(tag_t *m);
-static void cannot_set_member(tag_t *m)
+static void cannot_set_member(tag_t* m);
+static void cannot_set_member(tag_t* m)
 {
   if (! message[0])
     sprintf(message, "cannot set value of TIFF field \"%s\"", m->name);
@@ -641,16 +631,16 @@ static int cmapbits(unsigned int n,
   return 8; /* assume 8-bit colormap */
 }
 
-static object_t *get_object(int iarg)
+static object_t* get_object(int iarg)
 {
-  void *addr = yget_obj(iarg, &tiff_type);
+  void* addr = yget_obj(iarg, &tiff_type);
   if (! addr) y_error("expecting TIFF object");
-  return (object_t *)addr;
+  return (object_t*)addr;
 }
 
 /*---------------------------------------------------------------------------*/
 
-static void *push_workspace(long nbytes)
+static void* push_workspace(long nbytes)
 {
   long dims[2];
   dims[0] = 1;
@@ -672,50 +662,47 @@ static void *push_workspace(long nbytes)
  *     PHOTOMETRIC_LOGL            32844   // CIE Log2(L)
  *     PHOTOMETRIC_LOGLUV          32845   // CIE Log2(L) (u',v')
  */
-static void load_pixels(TIFF *tiff)
+static void load_pixels(TIFF* tiff)
 {
-  long dims[4];
-  void *buf, *raster;
-  tstrip_t strip, numberOfStrips;
-  uint16 orientation;
-  uint16 sampleFormat;
-  uint16 samplesPerPixel;
-  uint16 bitsPerSample;
-  uint16 planarConfig;
-  uint16 photometric;
-  uint32 width, height, depth;
-  uint32 rowsPerStrip;
-  uint32 stripSize;
-  uint32 x, y, y1, y0, rowLength, rowSize;
-  int single, complexData = 0, typeid;
-
   /* Get information about pixels organization. */
   message[0] = 0;
+  uint16 photometric;
   if (TIFFIsTiled(tiff))
     y_error("reading of tiled TIFF images not yet implemented");
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_PHOTOMETRIC, &photometric))
     missing_required_tag("photometric");
+  uint16 samplesPerPixel;
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_SAMPLESPERPIXEL, &samplesPerPixel))
     missing_required_tag("samplesPerPixel");
+  uint16 bitsPerSample;
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_BITSPERSAMPLE, &bitsPerSample))
     missing_required_tag("bitsPerSample");
+  uint32 width;
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_IMAGEWIDTH,  &width))
     missing_required_tag("imageWidth");
+  uint32 height;
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_IMAGELENGTH, &height))
     missing_required_tag("imageLength");
+  uint16 planarConfig;
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_PLANARCONFIG, &planarConfig))
     missing_required_tag("planarConfig");
+  uint32 depth;
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_IMAGEDEPTH,  &depth))
     missing_required_tag("imageDepth");
+  uint32 rowsPerStrip;
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip))
     missing_required_tag("rowsPerStrip");
+  uint16 sampleFormat;
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_SAMPLEFORMAT, &sampleFormat))
     missing_required_tag("sampleFormat");
+  uint16 orientation;
   if (! TIFFGetFieldDefaulted(tiff, TIFFTAG_ORIENTATION, &orientation))
     missing_required_tag("orientation");
 
+
   /* Figure out which data type to use for the result. */
-  typeid = Y_VOID; /* deliberately initialize with a non-array type */
+  int complexData = 0;
+  int typeid = Y_VOID; /* deliberately initialize with a non-array type */
   if (sampleFormat == SAMPLEFORMAT_UINT ||
       sampleFormat == SAMPLEFORMAT_INT) {
     if (bitsPerSample == 1 ||
@@ -767,12 +754,13 @@ static void load_pixels(TIFF *tiff)
   ypush_check(2);
 
   /* Allocate a strip buffer onto the stack. */
-  numberOfStrips = TIFFNumberOfStrips(tiff);
-  stripSize = TIFFStripSize(tiff);
-  buf = push_workspace(stripSize);
+  tstrip_t numberOfStrips = TIFFNumberOfStrips(tiff);
+  uint32 stripSize = TIFFStripSize(tiff);
+  void* buf = push_workspace(stripSize);
 
   /* Allocate raster image. */
-  single = (samplesPerPixel == 1);
+  long dims[4];
+  int single = (samplesPerPixel == 1);
   if (single) {
     dims[0] = 2;
     dims[1] = width;
@@ -783,15 +771,16 @@ static void load_pixels(TIFF *tiff)
     dims[2] = width;
     dims[3] = height;
   }
-  raster = push_array(typeid, dims);
-
-  rowLength = samplesPerPixel*width;
-  rowSize = ((bitsPerSample + 7)/8)*rowLength;
+  void* raster = push_array(typeid, dims);
+  uint32 y1, y0;
+  uint32 rowLength = samplesPerPixel*width;
+  uint32 rowSize = ((bitsPerSample + 7)/8)*rowLength;
   if (planarConfig == PLANARCONFIG_CONTIG) {
-    for (strip=0, y0=0 ; y0<height ; y0=y1, ++strip) {
+    tstrip_t strip;
+    for (strip = 0, y0 = 0; y0 < height; y0 = y1, ++strip) {
       /* Localization of next strip. */
-      unsigned char *dst = ((unsigned char *)raster) + rowSize*y0;
-      unsigned char *src = buf;
+      unsigned char* dst = ((unsigned char*)raster) + rowSize*y0;
+      unsigned char* src = buf;
 
       /* Read next strip. */
       if (strip >= numberOfStrips) y_error("bad number of strips");
@@ -803,10 +792,12 @@ static void load_pixels(TIFF *tiff)
         /* Just copy values. */
         memcpy(dst, src, rowSize*(y1 - y0));
       } else if (bitsPerSample == 1) {
-        unsigned int mask=1, value;
+        const unsigned int mask = 1;
+        unsigned int value;
         uint32 n = (rowLength/8)*8;
-        for (y=y0 ; y<y1 ; ++y, dst+=rowLength) {
-          for (x = 0; x < n; x+=8) {
+        for (uint32 y = y0; y < y1; ++y, dst += rowLength) {
+          uint32 x = 0;
+          while (x < n) {
             value = *src++;
             dst[x]   =  value     & mask;
             dst[x+1] = (value>>1) & mask;
@@ -816,6 +807,7 @@ static void load_pixels(TIFF *tiff)
             dst[x+5] = (value>>5) & mask;
             dst[x+6] = (value>>6) & mask;
             dst[x+7] = (value>>6) & mask;
+            x += 8;
           }
           if (x < rowLength) {
             for (value = *src++ ; x < rowLength ; ++x, value >>= 1) {
@@ -824,15 +816,18 @@ static void load_pixels(TIFF *tiff)
           }
         }
       } else if (bitsPerSample == 2) {
-        unsigned int mask=3, value;
+        const unsigned int mask = 3;
+        unsigned int value;
         uint32 n = (rowLength/4)*4;
-        for (y=y0 ; y<y1 ; ++y, dst+=rowLength) {
-          for (x = 0; x < n; x+=4) {
+        for (uint32 y = y0; y < y1; ++y, dst += rowLength) {
+          uint32 x = 0;
+          while (x < n) {
             value = *src++;
             dst[x]   =  value     & mask;
             dst[x+1] = (value>>2) & mask;
             dst[x+2] = (value>>4) & mask;
             dst[x+3] = (value>>6) & mask;
+            x += 4;
           }
           if (x < rowLength) {
             for (value = *src++ ; x < rowLength ; ++x, value >>= 2) {
@@ -841,13 +836,16 @@ static void load_pixels(TIFF *tiff)
           }
         }
       } else if (bitsPerSample == 4) {
-        unsigned int mask=15, value;
+        const unsigned int mask = 15;
+        unsigned int value;
         uint32 n = (rowLength/2)*2;
-        for (y=y0 ; y<y1 ; ++y, dst+=rowLength) {
-          for (x = 0; x < n; x+=2) {
+        for (uint32 y = y0; y < y1; ++y, dst += rowLength) {
+          uint32 x = 0;
+          while (x < n) {
             value = *src++;
             dst[x]   =  value     & mask;
             dst[x+2] = (value>>4) & mask;
+            x += 2;
           }
           if (x < rowLength) {
             for (value = *src++ ; x < rowLength ; ++x, value >>= 4) {
@@ -885,9 +883,9 @@ static void load_pixels(TIFF *tiff)
   }
   if (revx) {
     if (samplesPerPixel == 1) {
-      for (y = 0; y < height; ++y) {
-        type_t *p0 = ((type_t *)raster) + y*rowLength;
-        type_t *p1 = p0 + rowLength - 1;
+      for (uint32 y = 0; y < height; ++y) {
+        type_t* p0 = ((type_t*)raster) + y*rowLength;
+        type_t* p1 = p0 + rowLength - 1;
         while (p0 < p1) {
           tmp = *p0;
           *p0++ = *p1;
@@ -895,10 +893,10 @@ static void load_pixels(TIFF *tiff)
         }
       }
     } else {
-      unsigned int s, n=samplesPerPixel;
-      for (y = 0; y < height; ++y) {
-        type_t *p0 = ((type_t *)raster) + y*rowLength;
-        type_t *p1 = p0 + rowLength - samplesPerPixel;
+      unsigned int s, n = samplesPerPixel;
+      for (uint32 y = 0; y < height; ++y) {
+        type_t* p0 = ((type_t*)raster) + y*rowLength;
+        type_t* p1 = p0 + rowLength - samplesPerPixel;
         while (p0 < p1) {
           for (s = 0; s < n; ++s) {
             type_t tmp = p0[s]; p0[s] = p1[s]; p1[s] = tmp;
@@ -906,7 +904,6 @@ static void load_pixels(TIFF *tiff)
           p0 += n;
           p1 -= n;
         }
-      }
       }
     }
   }
@@ -919,8 +916,8 @@ static void load_pixels(TIFF *tiff)
     if (sampleFormat == SAMPLEFORMAT_UINT ||
         sampleFormat == SAMPLEFORMAT_INT) {
       switch (bitsPerSample) {
-#define REVERSE(type_t, ones) {					\
-        type_t complement = ones, *ptr = (type_t *)raster;	\
+#define REVERSE(type_t, ones) {                                 \
+        type_t complement = ones, *ptr = (type_t*)raster;       \
         for (i = 0; i < number; ++i) ptr[i] ^= complement; }
       case   1: REVERSE(unsigned char, 0x00000001) break;
       case   2: REVERSE(unsigned char, 0x00000003) break;
