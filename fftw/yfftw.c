@@ -47,12 +47,12 @@ extern BuiltIn Y_fftw, Y_fftw_plan;
 #endif
 
 /* Offset (in bytes) of MEMBER in structure TYPE. */
-#define OFFSET_OF(type, member)    ((char *)&((type *)0)->member - (char *)0)
+#define OFFSET_OF(type, member)    ((char*)&((type*)0)->member - (char*)0)
 
 /* PRIVATE ROUTINES */
-static int get_boolean(Symbol *s);
-static void FreePlan(void *addr);
-static void PrintPlan(Operand *op);
+static int get_boolean(Symbol* s);
+static void FreePlan(void* addr);
+static void PrintPlan(Operand* op);
 
 /*---------------------------------------------------------------------------*/
 /* FFTW plan opaque object */
@@ -60,22 +60,22 @@ static void PrintPlan(Operand *op);
 typedef struct y_fftw_plan_struct y_fftw_plan_t;
 
 struct y_fftw_plan_struct {
-  int references;  /* reference counter */
-  Operations *ops; /* virtual function table */
-  int flags;       /* FFTW flags */
-  int dir;         /* transform direction FFTW_FORWARD or FFTW_BACKWARD */
-  int real;        /* real transform? */
-  void *plan;      /* FFTW plan for transform */
-  void *buf;       /* NULL or an array of N complex numbers, that FFTW will
+  int  references; /* reference counter */
+  Operations* ops; /* virtual function table */
+  int       flags; /* FFTW flags */
+  int         dir; /* transform direction FFTW_FORWARD or FFTW_BACKWARD */
+  int        real; /* real transform? */
+  void*      plan; /* FFTW plan for transform */
+  void*       buf; /* NULL or an array of N complex numbers, that FFTW will
                       use as temporary space to perform the in-place
                       computation. */
-  int rank;        /* dimensionality of the arrays to be transformed */
-  int dims[1];     /* Dimension list for FFTW which uses row-major format
-                      to store arrays: the first dimension's index varies
-                      most slowly and the last dimension's index varies
-                      most quickly (i.e. opposite of Yorick interpreter
-                      but same order as the chained dimension list).
-                      _MUST_ BE LAST MEMBER (actual size is max(rank,1)). */
+  int        rank; /* dimensionality of the arrays to be transformed */
+  int        dims[1]; /* Dimension list for FFTW which uses row-major format to
+                      store arrays: the first dimension's index varies most
+                      slowly and the last dimension's index varies most quickly
+                      (i.e. opposite of Yorick interpreter but same order as
+                      the chained dimension list).  _MUST_ BE LAST MEMBER
+                      (actual size is max(rank,1)). */
 };
 
 extern PromoteOp PromXX;
@@ -98,10 +98,10 @@ Operations fftwPlanOps = {
   &AssignX, &EvalX, &SetupX, &GetMemberX, &MatMultX, &PrintPlan
 };
 
-static void FreePlan(void *addr)
+static void FreePlan(void* addr)
 {
   if (addr) {
-    y_fftw_plan_t *p = (y_fftw_plan_t *)addr;
+    y_fftw_plan_t* p = (y_fftw_plan_t*)addr;
     if (p->rank >= 1 && p->plan) {
       if (p->real)           rfftwnd_destroy_plan(p->plan);
       else if (p->rank == 1)    fftw_destroy_plan(p->plan);
@@ -112,13 +112,12 @@ static void FreePlan(void *addr)
   }
 }
 
-static void PrintPlan(Operand *op)
+static void PrintPlan(Operand* op)
 {
-  y_fftw_plan_t *p = (y_fftw_plan_t *)op->value;
-  const char *dir;
+  y_fftw_plan_t* p = (y_fftw_plan_t*)op->value;
+  const char* dir;
   char line[80];
   int i, flags = p->flags;
-
   if (p->real) {
     if (p->dir == FFTW_REAL_TO_COMPLEX) dir = "REAL_TO_COMPLEX";
     else                                dir = "COMPLEX_TO_REAL";
@@ -126,7 +125,6 @@ static void PrintPlan(Operand *op)
     if (p->dir == FFTW_FORWARD) dir = "FORWARD";
     else                        dir = "BACKWARD";
   }
-
   ForceNewline();
   PrintFunc("Object of type: ");
   PrintFunc(p->ops->typeName);
@@ -173,19 +171,19 @@ static void PrintPlan(Operand *op)
  */
 void Y_fftw_plan(int argc)
 {
-  y_fftw_plan_t *p;
-  int i, len=0, rank=0, dir=0, number=0;
-  int measure=0, real=0;
-  Symbol *stack;
-  long *dimlist=NULL;
-  Operand op;
-  unsigned int size;
-
   /* Parse arguments from first to last one. */
-  for (stack=sp-argc+1 ; stack<=sp ; ++stack) {
+  long* dimlist = NULL;
+  long number = 0;
+  long rank = 0;
+  long len = 0;
+  int measure = 0;
+  int real = 0;
+  int dir = 0;
+  for (Symbol* stack = sp - argc + 1; stack <= sp; ++stack) {
     if (stack->ops) {
-      /* non-keyword argument */
-      if (! dimlist) {
+      /* Positional argument. */
+      if (dimlist == NULL) {
+        Operand op;
         stack->ops->FormOperand(stack, &op);
         switch (op.ops->typeID) {
         case T_CHAR:
@@ -195,17 +193,23 @@ void Y_fftw_plan(int argc)
         case T_LONG:
           /* Check dimension list and compute rank. */
           dimlist = op.value;
-          if (! op.type.dims) {
+          if (op.type.dims == NULL) {
             /* dimension list specified as a scalar */
-            if ((number = dimlist[0]) <= 0) goto bad_dimlist;
+            if ((number = dimlist[0]) <= 0) {
+              goto bad_dimlist;
+            }
             rank = (number > 1 ? 1 : 0);
           } else if (! op.type.dims->next) {
             /* dimension list specified as a vector */
             rank = dimlist[0];
             len = op.type.number;
-            if (len != rank + 1) goto bad_dimlist;
-            for (i=1 ; i<len ; ++i) {
-              if (dimlist[i] < 1) goto bad_dimlist;
+            if (len != rank + 1) {
+              goto bad_dimlist;
+            }
+            for (long i = 1; i < len; ++i) {
+              if (dimlist[i] < 1) {
+                goto bad_dimlist;
+              }
             }
           } else {
           bad_dimlist:
@@ -215,35 +219,41 @@ void Y_fftw_plan(int argc)
         default:
           YError("bad data type for dimension list");
         }
-      } else if (! dir) {
+      } else if (dir == 0) {
         /* Use the same convention as in Yorick's FFT. */
         dir = YGetInteger(stack);
-        if (dir == 1) dir = FFTW_FORWARD;
-        else if (dir == -1) dir = FFTW_BACKWARD;
-        else YError("bad value for FFT direction");
+        if (dir == 1) {
+          dir = FFTW_FORWARD;
+        } else if (dir == -1) {
+          dir = FFTW_BACKWARD;
+        } else {
+          YError("bad value for FFT direction");
+        }
       } else {
         YError("too many arguments in fftw_plan");
       }
     } else {
-      /* keyword argument */
-      const char *keyword = globalTable.names[stack->index];
+      /* Keyword argument. */
+      const char* keyword = globalTable.names[stack->index];
       ++stack;
-      if (! strcmp(keyword, "real")) {
+      if (strcmp(keyword, "real") == 0) {
         real = get_boolean(stack);
-      } else if (! strcmp(keyword, "measure")) {
+      } else if (strcmp(keyword, "measure") == 0) {
         measure = get_boolean(stack);
       } else {
         YError("unknown keyword in fftw_plan");
       }
     }
   }
-  if (! dir) YError("too few arguments in fftw_plan");
-
+  if (dir == 0) {
+    YError("too few arguments in fftw_plan");
+  }
 
   /* Allocate new plan (with at least one slot for dims member) and push
      it on top of the stack. */
-  size = OFFSET_OF(y_fftw_plan_t, dims)
-    + (rank > 1 ? rank : 1)*sizeof(*p->dims);
+  y_fftw_plan_t* p;
+  size_t size = (OFFSET_OF(y_fftw_plan_t, dims)
+                 + (rank > 1 ? rank : 1)*sizeof(*p->dims));
   p = p_malloc(size);
   memset(p, 0, size);
   p->ops = &fftwPlanOps;
@@ -259,7 +269,7 @@ void Y_fftw_plan(int argc)
   if (len == 0) {
     p->dims[0] = number;
   } else {
-    i = 0;
+    long i = 0;
     while (--len >= 1) p->dims[i++] = dimlist[len];
   }
 
@@ -282,40 +292,31 @@ void Y_fftw_plan(int argc)
     if (! p->plan) YError("failed to create FFTW plan");
   }
 #ifdef DEBUG
-  for (i=0 ; i<p->rank ; ++i) printf("dims[%d]=%d\n",i,p->dims[i]);
+  for (int i = 0; i < p->rank; ++i) {
+    printf("dims[%d]=%d\n", i, p->dims[i]);
+  }
 #endif
 }
 
 void Y_fftw(int argc)
 {
-  Array *array;
-  Dimension *dimlist;
-  Symbol *s;
-  Operand op;
-  y_fftw_plan_t *p;
-  int i, j, rank, *dims;
-  int nr, nc, nhc, n, len;
-  int real_to_complex, complex_to_real;
-  void *inp = NULL; /* address of array to transform */
-
   if (argc != 2) YError("fftw takes exactly 2 arguments");
 
   /* Get FFTW plan. */
-  s = sp;
-  if (! s->ops) YError("unexpected keyword");
+  Symbol* s = sp;
   if (s->ops == &referenceSym) s = &globTab[s->index];
+  if (s->ops == NULL) YError("unexpected keyword");
   if (s->ops != &dataBlockSym ||
       s->value.db->ops != &fftwPlanOps) YError("expecting a FFTW plan");
-  p = (y_fftw_plan_t *)s->value.db;
+  y_fftw_plan_t* p = (y_fftw_plan_t*)s->value.db;
 
-  /* Get input array. */
+  /* Get input array and check its element type. */
   s = sp - 1;
-  if (! s->ops) YError("unexpected keyword");
+  if (s->ops == NULL) YError("unexpected keyword");
+  Operand op;
   s->ops->FormOperand(s, &op);
-
-  /* Check input data type. */
-  real_to_complex = (p->real && p->dir == FFTW_REAL_TO_COMPLEX);
-  complex_to_real = (p->real && p->dir == FFTW_COMPLEX_TO_REAL);
+  int real_to_complex = (p->real && p->dir == FFTW_REAL_TO_COMPLEX);
+  int complex_to_real = (p->real && p->dir == FFTW_COMPLEX_TO_REAL);
   switch (op.ops->typeID) {
   case T_CHAR:
   case T_SHORT:
@@ -331,11 +332,11 @@ void Y_fftw(int argc)
   }
 
   /* Check dimension list. */
-  dims = p->dims;
-  rank = p->rank;
-  dimlist = op.type.dims;
-  i = 0;
-  while (dimlist) {
+  int* dims = p->dims;
+  int rank = p->rank;
+  Dimension* dimlist = op.type.dims;
+  int i = 0;
+  while (dimlist != NULL) {
     if (i >= rank || dimlist->number != ((complex_to_real && i == rank-1) ?
                                          dims[i]/2+1 : dims[i])) {
       i = -1; /* trigger error below */
@@ -344,9 +345,9 @@ void Y_fftw(int argc)
     ++i;
     dimlist = dimlist->next;
   }
-  if (i != rank)
+  if (i != rank) {
     YError("dimension list of input array incompatible with FFTW plan");
-
+  }
   if (rank == 0) {
 
     /*********************************
@@ -366,40 +367,43 @@ void Y_fftw(int argc)
      ***                         ***
      *******************************/
     const double zero = 0.0;
-    double *cptr;
 
     /* Push a complex array with proper dimensions to store
        the result on top of the stack. */
-    nr = dims[rank - 1]; /* number of real's along 1st dim */
-    nhc = nr/2 + 1;      /* number of complex's along 1st dim */
+    long nr = dims[rank - 1]; /* number of real's along 1st dim */
+    long nhc = nr/2 + 1;      /* number of complex's along 1st dim */
     if (tmpDims) {
-      Dimension *oldDims = tmpDims;
+      Dimension* oldDims = tmpDims;
       tmpDims = 0;
       FreeDimension(oldDims);
     }
     tmpDims = NewDimension(nhc, 1, tmpDims);
-    for (n=1, i=rank-2 ; i>=0 ; --i) {
-      n *= (len = dims[i]);
+    long n = 1;
+    for (int i = rank - 2; i >= 0; --i) {
+      long len = dims[i];
+      n *= len;
       tmpDims = NewDimension(len, 1, tmpDims);
     }
-    if (n*nr != op.type.number) YError("BUG in dimension list code");
-    array = NewArray(&complexStruct, tmpDims);
+    if (n*nr != op.type.number) {
+      YError("BUG in dimension list code");
+    }
+    Array* array = NewArray(&complexStruct, tmpDims);
     PushDataBlock(array);
-    inp = array->value.d;
+    void* inp = array->value.d;
 
     /* Copy input into output array, taking care of padding (zero padding
        is in case rank=0). */
-    cptr = inp; /* complex array as double */
-    nc = 2*nhc; /* complex array as double */
-#define COPY(type_t)					\
-      {							\
-        type_t *rptr = op.value;			\
-        for (j=0 ; j<n ; ++j, rptr+=nr, cptr+=nc) {	\
-          for (i=0 ; i<nr ; ++i) cptr[i] = rptr[i];	\
-          for (    ; i<nc ; ++i) cptr[i] = zero;	\
-        }						\
-      }							\
-      break
+    double* cptr = inp; /* complex array as double */
+    long nc = 2*nhc; /* complex array as double */
+#define COPY(type_t)                                            \
+    {                                                           \
+      type_t* rptr = op.value;                                  \
+      for (long j = 0; j < n; ++j, rptr += nr, cptr += nc) {	\
+        for (i=0 ; i<nr ; ++i) cptr[i] = rptr[i];               \
+        for (    ; i<nc ; ++i) cptr[i] = zero;                  \
+      }                                                         \
+    }                                                           \
+    break
     switch (op.ops->typeID) {
     case T_CHAR:   COPY(char);
     case T_SHORT:  COPY(short);
@@ -426,6 +430,7 @@ void Y_fftw(int argc)
     /* Make sure input array is complex and a temporary one (either because
        it will be the result or because FFTW_COMPLEX_TO_REAL destroys its
        input). */
+    void* inp = NULL; /* address of array to transform */
     switch (op.ops->typeID) {
     case T_CHAR:
     case T_SHORT:
@@ -439,8 +444,8 @@ void Y_fftw(int argc)
       break;
     case T_COMPLEX:
       /* If input array has references (is not temporary), make a new copy. */
-      if (op.references) {
-        array = NewArray(&complexStruct, op.type.dims);
+      if (op.references > 0) {
+        Array* array = NewArray(&complexStruct, op.type.dims);
         PushDataBlock(array);
         inp = array->value.d;
         memcpy(inp, op.value, 2*op.type.number*sizeof(double));
@@ -456,12 +461,14 @@ void Y_fftw(int argc)
          transform, then pop output array in place of (temporary) input
          one.  */
       if (tmpDims) {
-        Dimension *oldDims = tmpDims;
+        Dimension* oldDims = tmpDims;
         tmpDims = 0;
         FreeDimension(oldDims);
       }
-      for (i=rank-1 ; i>=0 ; --i) tmpDims = NewDimension(dims[i], 1, tmpDims);
-      array = NewArray(&doubleStruct, tmpDims);
+      for (int i = rank - 1; i >= 0; --i) {
+        tmpDims = NewDimension(dims[i], 1, tmpDims);
+      }
+      Array* array = NewArray(&doubleStruct, tmpDims);
       PushDataBlock(array);
       rfftwnd_one_complex_to_real(p->plan, inp, array->value.d);
       PopTo(sp - 2);
@@ -480,7 +487,7 @@ void Y_fftw(int argc)
 
 /*---------------------------------------------------------------------------*/
 
-static int get_boolean(Symbol *s)
+static int get_boolean(Symbol* s)
 {
   if (s->ops == &referenceSym) s = &globTab[s->index];
   if (s->ops == &intScalar)    return (s->value.i != 0);
@@ -491,14 +498,14 @@ static int get_boolean(Symbol *s)
     s->ops->FormOperand(s, &op);
     if (! op.type.dims) {
       switch (op.ops->typeID) {
-      case T_CHAR:   return (*(char   *)op.value != 0);
-      case T_SHORT:  return (*(short  *)op.value != 0);
-      case T_INT:    return (*(int    *)op.value != 0);
-      case T_LONG:   return (*(long   *)op.value != 0L);
-      case T_FLOAT:  return (*(float  *)op.value != 0.0F);
-      case T_DOUBLE: return (*(double *)op.value != 0.0);
-      case T_COMPLEX:return (((double *)op.value)[0] != 0.0 ||
-                             ((double *)op.value)[1] != 0.0);
+      case T_CHAR:   return (*(char*  )op.value != 0);
+      case T_SHORT:  return (*(short* )op.value != 0);
+      case T_INT:    return (*(int*   )op.value != 0);
+      case T_LONG:   return (*(long*  )op.value != 0L);
+      case T_FLOAT:  return (*(float* )op.value != 0.0F);
+      case T_DOUBLE: return (*(double*)op.value != 0.0);
+      case T_COMPLEX:return (((double*)op.value)[0] != 0.0 ||
+                             ((double*)op.value)[1] != 0.0);
       case T_STRING: return (op.value != NULL);
       case T_VOID:   return 0;
       }
@@ -511,7 +518,7 @@ static int get_boolean(Symbol *s)
 /*---------------------------------------------------------------------------*/
 #else /* not HAVE_FFTW */
 
-static char *no_fftw_support = "no FFTW support in this version of Yorick";
+static char* no_fftw_support = "no FFTW support in this version of Yorick";
 
 void Y_fftw(int nargs) { YError(no_fftw_support); }
 void Y_fftw_plan(int nargs) { YError(no_fftw_support); }
