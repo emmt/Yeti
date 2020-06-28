@@ -66,30 +66,30 @@ extern BuiltIn Y_insure_temporary;
  */
 
 /* Symbols defined in std0.c: */
-extern char *yLaunchDir;
+extern char* yLaunchDir;
 extern int yBatchMode;
 
 /* Symbols defined in ops0.c: */
-extern void *BuildResult2(Operand *l, Operand *r);
+extern void* BuildResult2(Operand* l, Operand* r);
 
 /* Symbols defined in ycode.c: */
-extern char *yHomeDir;  /* e.g., "/usr/local/lib/yorick/1.5"   */
-extern char *ySiteDir;  /* e.g., "/usr/local/share/yorick/1.5" */
-extern char *yUserPath; /* e.g., ".:~/yorick:~/Yorick"         */
+extern char* yHomeDir;  /* e.g., "/usr/local/lib/yorick/1.5"   */
+extern char* ySiteDir;  /* e.g., "/usr/local/share/yorick/1.5" */
+extern char* yUserPath; /* e.g., ".:~/yorick:~/Yorick"         */
 
-static void globalize_string(const char *name, const char *value);
-static void globalize_long(const char *name, long value);
+static void globalize_string(const char* name, const char* value);
+static void globalize_long(const char* name, long value);
 
 
 #if USE_FASTER_DIVIDE_Z
-static void fast_DivideZ(Operand *l, Operand *r);
+static void fast_DivideZ(Operand* l, Operand* r);
 #endif /* USE_FASTER_DIVIDE_Z */
 
 void Y_yeti_init(int argc)
 {
-  const char *version = YETI_STRINGIFY(YETI_VERSION_MAJOR) "." \
-    YETI_STRINGIFY(YETI_VERSION_MINOR) "." \
-    YETI_STRINGIFY(YETI_VERSION_MICRO) YETI_VERSION_SUFFIX;
+  const char* version = YETI_XSTRINGIFY(YETI_VERSION_MAJOR) "." \
+    YETI_XSTRINGIFY(YETI_VERSION_MINOR) "." \
+    YETI_XSTRINGIFY(YETI_VERSION_MICRO) YETI_VERSION_SUFFIX;
 
 #if USE_FASTER_DIVIDE_Z
   /* Replace complex division by faster code. */
@@ -107,23 +107,23 @@ void Y_yeti_init(int argc)
   }
 }
 
-static void globalize_string(const char *name, const char *value)
+static void globalize_string(const char* name, const char* value)
 {
   long index = Globalize(name, 0L);
-  DataBlock *old = (globTab[index].ops == &dataBlockSym ?
+  DataBlock* old = (globTab[index].ops == &dataBlockSym ?
                     globTab[index].value.db : 0);
-  Array *obj = NewArray(&stringStruct, (Dimension *)0);
+  Array* obj = NewArray(&stringStruct, (Dimension*)0);
   globTab[index].ops = &intScalar; /* in case of interrupt */
-  globTab[index].value.db = (DataBlock *)obj;
+  globTab[index].value.db = (DataBlock*)obj;
   globTab[index].ops = &dataBlockSym;
   Unref(old);
   obj->value.q[0] = p_strcpy(value);
 }
 
-static void globalize_long(const char *name, long value)
+static void globalize_long(const char* name, long value)
 {
   long index = Globalize(name, 0L);
-  DataBlock *old = (globTab[index].ops == &dataBlockSym ?
+  DataBlock* old = (globTab[index].ops == &dataBlockSym ?
                     globTab[index].value.db : 0);
   globTab[index].ops = &longScalar; /* in case of interrupt */
   globTab[index].value.l = value;
@@ -134,22 +134,21 @@ static void globalize_long(const char *name, long value)
 /* Faster code for complex division (save 1 division out of 3 with
    respect to original Yorick DivideZ code resulting in ~33% faster
    code). */
-static void fast_DivideZ(Operand *l, Operand *r)
+static void fast_DivideZ(Operand* l, Operand* r)
 {
-  const double one=1.0;
-  double lr, li, rr, ri;          /* watch out for dst==lv or rv */
-  double *lv, *rv, *dst;
-  size_t i, n;
-
-  dst = BuildResult2(l, r);
-  if (! dst) YError("operands not conformable in binary /");
-  n = l->type.number;
-  lv = l->value;
-  rv = r->value;
-  for (i=0 ; i<n ; ++i) {
-    lr= lv[2*i];  li= lv[2*i+1];
-    rr= rv[2*i];  ri= rv[2*i+1];
-    if ((rr>0?rr:-rr)>(ri>0?ri:-ri)) { /* be careful about overflow... */
+  const double one = 1.0;
+  double* dst = BuildResult2(l, r);
+  if (dst == NULL) YError("operands not conformable in binary /");
+  size_t n = l->type.number;
+  const double* lv = l->value;
+  const double* rv = r->value;
+  for (size_t i = 0; i < n; ++i) {
+    /* extract values (watch out for dst == lv or rv) */
+    double lr = lv[2*i];
+    double li = lv[2*i+1];
+    double rr = rv[2*i];
+    double ri = rv[2*i+1];
+    if ((rr > 0 ? rr : -rr) > (ri > 0 ? ri : -ri)) { /* be careful about overflow... */
       ri /= rr;
       rr = one/((one + ri*ri)*rr);
       dst[2*i] = (lr + li*ri)*rr;
@@ -169,17 +168,12 @@ static void fast_DivideZ(Operand *l, Operand *r)
 /*---------------------------------------------------------------------------*/
 /* MEMORY HACKING ROUTINES */
 
-static void *get_address(Symbol *s);
-static void build_dimlist(Symbol *stack, int nArgs);
-static Operand *form_operand_db(Symbol *owner, Operand *op);
+static void* get_address(Symbol* s);
+static void build_dimlist(Symbol* stack, int nArgs);
+static Operand* form_operand_db(Symbol* owner, Operand* op);
 
 void Y_mem_base(int argc)
 {
-  Array *array;
-  Symbol *s;
-  OpTable *ops;
-  long value;
-
   if (argc != 1) YError("mem_base takes exactly 1 argument");
 
   /*** based on Address() in ops3.c ***/
@@ -193,42 +187,40 @@ void Y_mem_base(int argc)
   bad_arg:
     YError("expected a reference to an array object");
   }
-  s = &globTab[sp->index];
-  ops = s->ops;
+  Array* array;
+  Symbol* s = &globTab[sp->index];
+  OpTable* ops = s->ops;
   if (ops == &dataBlockSym) {
-    array = (Array *)s->value.db;
+    array = (Array*)s->value.db;
   } else if (ops == &doubleScalar) {
-    array = NewArray(&doubleStruct, (Dimension *)0);
+    array = NewArray(&doubleStruct, (Dimension*)0);
     array->value.d[0] = s->value.d;
-    s->value.db = (DataBlock *)array;
+    s->value.db = (DataBlock*)array;
     s->ops = &dataBlockSym;
   } else if (ops == &longScalar) {
-    array = NewArray(&longStruct, (Dimension *)0);
+    array = NewArray(&longStruct, (Dimension*)0);
     array->value.l[0] = s->value.l;
-    s->value.db = (DataBlock *)array;
+    s->value.db = (DataBlock*)array;
     s->ops = &dataBlockSym;
   } else if (ops == &intScalar) {
-    array = NewArray(&intStruct, (Dimension *)0);
+    array = NewArray(&intStruct, (Dimension*)0);
     array->value.i[0] = s->value.i;
-    s->value.db = (DataBlock *)array;
+    s->value.db = (DataBlock*)array;
     s->ops = &dataBlockSym;
   } else {
     goto bad_arg;
   }
   if (! array->ops->isArray) goto bad_arg;
-  value = (long)array->value.c;
+  long value = (long)array->value.c;
   Drop(2);
   PushLongValue(value);
 }
 
 void Y_mem_copy(int argc)
 {
-  void *address;
-  Symbol *s;
-
   if (argc != 2) YError("mem_copy takes exactly 2 arguments");
-  address = get_address(sp - 1);
-  s = (sp->ops == &referenceSym) ? &globTab[sp->index] : sp;
+  void* address = get_address(sp - 1);
+  Symbol* s = (sp->ops == &referenceSym) ? &globTab[sp->index] : sp;
   if (s->ops == &doubleScalar) {
     (void)memcpy(address, &(s->value.d), sizeof(double));
   } else if (s->ops == &longScalar) {
@@ -236,7 +228,7 @@ void Y_mem_copy(int argc)
   } else if (s->ops == &intScalar) {
     (void)memcpy(address, &(s->value.i), sizeof(int));
   } else if (s->ops == &dataBlockSym && s->value.db->ops->isArray) {
-    Array *array = (Array *)s->value.db;
+    Array* array = (Array*)s->value.db;
     (void)memcpy(address, array->value.c,
                  array->type.number*array->type.base->size);
   } else {
@@ -246,46 +238,41 @@ void Y_mem_copy(int argc)
 
 void Y_mem_peek(int argc)
 {
-  Symbol *s, *stack = sp - argc + 1;
-  StructDef *base;
-  Array *array;
-  void *address;
-
   if (argc < 2) YError("mem_peek takes at least 2 arguments");
-  address = get_address(stack);
-  s = stack + 1;
+  Symbol* stack = sp - argc + 1;
+  void* address = get_address(stack);
+  Symbol* s = stack + 1;
   if (s->ops == &referenceSym) s = &globTab[s->index];
   if (s->ops != &dataBlockSym || s->value.db->ops != &structDefOps)
     YError("expected type definition as second argument");
-  base = (StructDef *)s->value.db;
+  StructDef* base = (StructDef*)s->value.db;
   if (base->dataOps->typeID < T_CHAR || base->dataOps->typeID > T_COMPLEX)
     YError("only basic data types are supported");
   build_dimlist(stack + 2, argc - 2);
-  array = PushDataBlock(NewArray(base, tmpDims));
+  Array* array = PushDataBlock(NewArray(base, tmpDims));
   memcpy(array->value.c, address, array->type.number*array->type.base->size);
 }
 
-static void *get_address(Symbol *s)
+static void* get_address(Symbol* s)
 {
-  Operand op;
   if (! s->ops) YError("unexpected keyword argument");
+  Operand op;
   s->ops->FormOperand(s, &op);
-  if (op.type.dims == (Dimension *)0) {
-    if (op.ops->typeID == T_LONG) return (void *)*(long *)op.value;
-    if (op.ops->typeID == T_POINTER) return (void *)*(void **)op.value;
+  if (op.type.dims == (Dimension*)0) {
+    if (op.ops->typeID == T_LONG) return (void*)*(long*)op.value;
+    if (op.ops->typeID == T_POINTER) return (void*)*(void**)op.value;
   }
   YError("bad address (expecting long integer or pointer scalar)");
-  return (void *)0; /* avoid compiler warning */
+  return (void*)0; /* avoid compiler warning */
 }
 
 /* The following function is a pure copy of BuildDimList in 'ops3.c' of
    Yorick source code -- required to avoid plugin clash. */
-static void build_dimlist(Symbol *stack, int nArgs)
+static void build_dimlist(Symbol* stack, int nArgs)
 {
-  Dimension *tmp= tmpDims;
+  Dimension* tmp= tmpDims;
   tmpDims= 0;
   FreeDimension(tmp);
-
   while (nArgs--) {
     if (stack->ops==&referenceSym) ReplaceRef(stack);
     if (stack->ops==&longScalar) {
@@ -299,7 +286,7 @@ static void build_dimlist(Symbol *stack, int nArgs)
       Operand op;
       form_operand_db(stack, &op);
       if (op.ops==&rangeOps) {
-        Range *range= op.value;
+        Range* range= op.value;
         long len;
         if (range->rf || range->nilFlags || range->inc!=1)
           YError("only min:max ranges allowed in dimension list");
@@ -312,11 +299,11 @@ static void build_dimlist(Symbol *stack, int nArgs)
         long len;
         op.ops->ToLong(&op);
         if (!op.type.dims) {
-          len= *(long *)op.value;
+          len= *(long*)op.value;
           if (len<=0) goto badl;
           tmpDims= NewDimension(len, 1L, tmpDims);
         } else {
-          long *dim= op.value;
+          long* dim= op.value;
           long n= *dim++;
           if (n>10 || n>=op.type.number)
             YError("dimension list format [#dims, len1, len2, ...]");
@@ -340,13 +327,13 @@ static void build_dimlist(Symbol *stack, int nArgs)
 
 /* The following function is a pure copy of FormOperandDB in 'ops0.c' of
    Yorick source code -- required to avoid plugin clash. */
-static Operand *form_operand_db(Symbol *owner, Operand *op)
+static Operand* form_operand_db(Symbol* owner, Operand* op)
 {
-  DataBlock *db= owner->value.db;
-  Operations *ops= db->ops;
+  DataBlock* db= owner->value.db;
+  Operations* ops= db->ops;
   op->owner= owner;
   if (ops->isArray) {
-    Array *array= (Array *)db;
+    Array* array= (Array*)db;
     op->ops= ops;
     op->references= array->references;
     op->type.base= array->type.base;
@@ -354,10 +341,10 @@ static Operand *form_operand_db(Symbol *owner, Operand *op)
     op->type.number= array->type.number;
     op->value= array->value.c;
   } else if (ops==&lvalueOps) {
-    LValue *lvalue= (LValue *)db;
-    StructDef *base= lvalue->type.base;
+    LValue* lvalue= (LValue*)db;
+    StructDef* base= lvalue->type.base;
     if (lvalue->strider || base->model) {
-      Array *array= FetchLValue(lvalue, owner);
+      Array* array= FetchLValue(lvalue, owner);
       op->ops= array->ops;
       op->references= array->references;
       op->type.base= array->type.base;
@@ -390,9 +377,8 @@ static Operand *form_operand_db(Symbol *owner, Operand *op)
 
 void Y_get_encoding(int argc)
 {
-  const char *name;
   static struct {
-    const char *name;
+    const char* name;
     long        layout[32];
   } db[] = {
     {"alpha", {1,1,-1, 2,2,-1, 4,4,-1, 8,8,-1, 4,4,-1, 8,8,-1,
@@ -432,13 +418,13 @@ void Y_get_encoding(int argc)
   const int ndb = sizeof(db)/sizeof(db[0]);
 
   if (argc!=1) YError("get_encoding takes exactly one argument");
-  name = YGetString(sp);
-  if (name) {
-    long *result = YETI_PUSH_NEW_L(yeti_start_dimlist(32));
+  const char* name = YGetString(sp);
+  if (name != NULL) {
+    long* result = YETI_PUSH_NEW_L(yeti_start_dimlist(32));
     int i, c = name[0];
     for (i=0 ; i<ndb ; ++i) {
       if (c==db[i].name[0] && ! strcmp(name, db[i].name)) {
-        long *layout = db[i].layout;
+        long* layout = db[i].layout;
         for (i=0 ; i<32 ; ++i) result[i] = layout[i];
         return;
       }
@@ -452,17 +438,15 @@ void Y_get_encoding(int argc)
 
 void Y_machine_constant(int argc)
 {
+
+  if (argc!=1) YError("machine_constant: takes exactly one argument");
+  const char* name = YGetString(sp);
   double dval;
   float fval;
   long lval;
-  const char *name;
-
-  if (argc!=1) YError("machine_constant: takes exactly one argument");
-  name = YGetString(sp);
-
   if (name[0] == 'D') {
     if (name[1] == 'B' && name[2] == 'L' && name[3] == '_') {
-#define _(S,V) if (! strcmp(#S, name + 4)) { V = DBL_##S; goto push_##V; }
+#define _(S,V) if (strcmp(#S, name + 4) == 0) { V = DBL_##S; goto push_##V; }
 #if defined(DBL_EPSILON)
       _(EPSILON, dval)
 #endif
@@ -547,50 +531,45 @@ void Y_machine_constant(int argc)
 
 void Y_nrefsof(int argc)
 {
-  Operand op;
   if (argc != 1) YError("nrefsof takes exactly one argument");
   if (! sp->ops) YError("unexpected keyword argument");
+  Operand op;
   PushLongValue(sp->ops->FormOperand(sp, &op)->references);
 }
 
 void Y_insure_temporary(int argc)
 {
-  OpTable *ops;
-  Symbol *glob, *stack;
-  Array *array, *copy;
-  int i;
-
   if (argc < 1 || ! CalledAsSubroutine()) {
     YError("insure_temporary must be called as a subroutine");
   }
-  for (i = 1 - argc ; i <= 0 ; ++i) {
-    stack = sp + i;
+  for (int i = 1 - argc; i <= 0; ++i) {
+    Symbol* stack = sp + i;
     if (stack->ops != &referenceSym) {
       YError("insure_temporary expects variable reference(s)");
     }
-    glob = &globTab[stack->index];
-    ops = glob->ops;
+    Symbol* glob = &globTab[stack->index];
+    OpTable* ops = glob->ops;
     if (ops == &doubleScalar) {
-      copy = NewArray(&doubleStruct, (Dimension *)0);
+      Array* copy = NewArray(&doubleStruct, (Dimension*)0);
       copy->value.d[0] = glob->value.d;
-      glob->value.db = (DataBlock *)copy;
+      glob->value.db = (DataBlock*)copy;
       glob->ops = &dataBlockSym;
     } else if (ops == &longScalar) {
-      copy = NewArray(&longStruct, (Dimension *)0);
+      Array* copy = NewArray(&longStruct, (Dimension*)0);
       copy->value.l[0] = glob->value.l;
-      glob->value.db = (DataBlock *)copy;
+      glob->value.db = (DataBlock*)copy;
       glob->ops = &dataBlockSym;
     } else if (ops == &intScalar) {
-      copy = NewArray(&intStruct, (Dimension *)0);
+      Array* copy = NewArray(&intStruct, (Dimension*)0);
       copy->value.i[0] = glob->value.i;
-      glob->value.db = (DataBlock *)copy;
+      glob->value.db = (DataBlock*)copy;
       glob->ops = &dataBlockSym;
     } else if (ops == &dataBlockSym) {
-      array = (Array *)glob->value.db;
+      Array* array = (Array*)glob->value.db;
       if (array->references >= 1 && array->ops->isArray) {
         /* make a fresh copy */
-        copy = NewArray(array->type.base, array->type.dims);
-        glob->value.db = (DataBlock *)copy;
+        Array* copy = NewArray(array->type.base, array->type.dims);
+        glob->value.db = (DataBlock*)copy;
         --array->references;
         array->type.base->Copy(array->type.base, copy->value.c,
                                array->value.c, array->type.number);
@@ -602,18 +581,18 @@ void Y_insure_temporary(int argc)
 /*---------------------------------------------------------------------------*/
 /* SMOOTHING */
 
-static void smooth_single(double *x, double p25, double p50, double p75,
+static void smooth_single(double* x, double p25, double p50, double p75,
                           long n1, long n2, long n3);
 
 void Y_smooth3(int argc)
 {
   Operand op;
-  double *x = NULL;
+  double* x = NULL;
   long n1, n2, n3;
   int single = 0, is_complex;
   long which = 0; /* avoid compiler warning */
-  Symbol *stack;
-  Dimension *dims;
+  Symbol* stack;
+  Dimension* dims;
   int nparsed = 0;
   double p25 = 0.25, p50 = 0.50, p75 = 0.75;
 
@@ -627,7 +606,7 @@ void Y_smooth3(int argc)
       }
     } else {
       /* keyword argument */
-      const char *keyword = globalTable.names[stack->index];
+      const char* keyword = globalTable.names[stack->index];
       ++stack;
       if (keyword[0] == 'c' && keyword[1] == 0) {
         if (YNotNil(stack)) {
@@ -667,7 +646,7 @@ void Y_smooth3(int argc)
   case T_COMPLEX:
     /* If input array has references (is not temporary), make a new copy. */
     if (op.references) {
-      Array *array = NewArray((is_complex ? &complexStruct : &doubleStruct),
+      Array* array = NewArray((is_complex ? &complexStruct : &doubleStruct),
                               op.type.dims);
       PushDataBlock(array);
       x = array->value.d;
@@ -689,7 +668,7 @@ void Y_smooth3(int argc)
   n3 = 1; /* product of dimensions after current one */
   if (single) {
     /* Apply operator along a single dimension. */
-    Dimension *tmp = dims;
+    Dimension* tmp = dims;
     long rank=0;
     while (tmp) {
       ++rank;
@@ -719,18 +698,18 @@ void Y_smooth3(int argc)
   }
 }
 
-static void smooth_single(double *x, double p25, double p50, double p75,
+static void smooth_single(double* x, double p25, double p50, double p75,
                           long n1, long n2, long n3)
 {
   if (n2 >= 2) {
     long i, stride = n1, n = n1*n2;
     double x1, x2, x3;
     if (stride == 1) {
-      for ( ; --n3>=0 ; x+=n) {
+      for ( ; --n3 >= 0; x+=n) {
         x2 = x[0];
         x3 = x[1];
         x[0] = p75*x2 + p25*x3;
-        for (i=2 ; i<n ; ++i) {
+        for (i = 2; i < n; ++i) {
           x1 = x2;
           x2 = x3;
           x3 = x[i];
@@ -740,12 +719,12 @@ static void smooth_single(double *x, double p25, double p50, double p75,
       }
     } else {
       long p = n - stride;
-      for ( ; --n3>=0 ; x+=p) {
-        for (n1=stride ; --n1>=0 ; ++x) {
+      for ( ; --n3 >= 0; x += p) {
+        for (n1 = stride; --n1 >= 0; ++x) {
           x2 = x[0];
           x3 = x[stride];
           x[0] = p75*x2 + p25*x3;
-          for (i=2*stride ; i<n ; i+=stride) {
+          for (i = 2*stride; i < n; i += stride) {
             x1 = x2;
             x2 = x3;
             x3 = x[i];
