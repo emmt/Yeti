@@ -52,27 +52,6 @@
 
 extern BuiltIn Y_sinc;
 
-/* ANSI standard math.h functions */
-extern double sin(double);
-extern double cos(double);
-extern double tan(double);
-extern double asin(double);
-extern double acos(double);
-extern double atan(double);
-extern double atan2(double, double);
-extern double sinh(double);
-extern double cosh(double);
-extern double tanh(double);
-extern double exp(double);
-extern double log(double);
-extern double log10(double);
-extern double sqrt(double);
-extern double ceil(double);
-extern double floor(double);
-
-/* function either present in math library or implemented in nonc.c */
-extern double hypot(double, double);
-
 /* Some functions and definitions stolen from Yorick std0.c and ops0.c
    in order to not use 'private' Yorick API. */
 typedef void looper_t(double* dst, const double* src, const long n);
@@ -142,18 +121,15 @@ static void sincDLoop(double* dst, const double* src, const long n)
 #if NORMALIZED_SINC
   const double pi = PI;
 #endif
-  double x;
-  long i;
-
-  for (i=0 ; i<n ; ++i) {
-    x = src[i];
-    if (x) {
+  for (long i = 0; i < n; ++i) {
+    double x = src[i];
+    if (x == 0.0) {
+      dst[i] = 1.0;
+    } else {
 #if NORMALIZED_SINC
       x *= pi;
 #endif
       dst[i] = sin(x)/x;
-    } else {
-      dst[i] = 1.0;
     }
   }
 }
@@ -208,8 +184,12 @@ void Y_arc(int nArgs)
   if (sp->ops == NULL) YError("unexpected keyword");
   Operand op;
   sp->ops->FormOperand(sp, &op);
-  int promoteID = op.ops->promoteID;
-  if (promoteID == T_DOUBLE) {
+  int type = op.ops->typeID;
+  if (type < T_FLOAT) {
+    op.ops->ToDouble(&op);
+    type = op.ops->typeID;
+  }
+  if (type == T_DOUBLE) {
     const double rad = TWO_PI;
     const double scl = ONE_OVER_TWO_PI;
     double* x = op.value;
@@ -219,10 +199,9 @@ void Y_arc(int nArgs)
       y[i] = x[i] - rad*round(scl*x[i]);
     }
     pop_to_d(sp - 2);
-  } else if (promoteID <= T_FLOAT) {
+  } else if (type == T_FLOAT) {
     const float rad = JOIN(TWO_PI,F);
     const float scl = JOIN(ONE_OVER_TWO_PI,F);
-    if (promoteID != T_FLOAT) op.ops->ToFloat(&op);
     float* x = op.value;
     float* y = build_result(&op, &floatStruct);
     long number = op.type.number;
