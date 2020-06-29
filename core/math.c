@@ -32,41 +32,28 @@
 # define NORMALIZED_SINC 1
 #endif
 
-
 /*
- * Utility macros: STRINGIFY takes an argument and wraps it in "" (double
- * quotation marks), JOIN joins two arguments.  Both are capable of
- * performing macro expansion of their arguments.
+ * Utility macros: (X)STRINGIFY takes an argument and wraps it in "" (double
+ * quotation marks), (X)JOIN joins two arguments.  The version prefixed by an X
+ * are capable of performing macro expansion of their arguments.
  */
 #define VERBATIM(x) x
-#if defined(__STDC__) || defined(__cplusplus) || defined(c_plusplus)
-# define STRINGIFY(x)   STRINGIFY1(x)
-# define STRINGIFY1(x)  #x
-# define JOIN(a,b)      JOIN1(a,b)
-# define JOIN1(a,b)     a##b
-#else
-# define STRINGIFY(x)   "x"
-# define JOIN(a,b)      VERBATIM(a)/**/VERBATIM(b)
-#endif
-
+#define XSTRINGIFY(x)  STRINGIFY(x)
+#define STRINGIFY(x)   #x
+#define XJOIN(a,b)     JOIN(a,b)
+#define JOIN(a,b)      a##b
 
 extern BuiltIn Y_sinc;
-
-/* Some functions and definitions stolen from Yorick std0.c and ops0.c
-   in order to not use 'private' Yorick API. */
-typedef void looper_t(double* dst, const double* src, const long n);
-static void* build_result(Operand* op, StructDef* base);
-static void unary_worker(int nArgs, looper_t* DLooper, looper_t* ZLooper);
-static void pop_to_d(Symbol* s);
+extern BuiltIn Y_arc;
 
 /* same as PopToD in ops0.c */
 static void pop_to_d(Symbol* s)
 {
   Array* array = (Array*)sp->value.db;
   PopTo(s);
-  if (s->ops==&dataBlockSym && !array->type.dims) {
-    s->ops= &doubleScalar;
-    s->value.d= array->value.d[0];
+  if (s->ops == &dataBlockSym && array->type.dims == NULL) {
+    s->ops = &doubleScalar;
+    s->value.d = array->value.d[0];
     Unref(array);
   }
 }
@@ -74,49 +61,84 @@ static void pop_to_d(Symbol* s)
 /* similar to BuildResultU in ops0.c */
 static void* build_result(Operand* op, StructDef* base)
 {
-  if (! op->references && op->type.base == base) {
+  if (op->references == 0 && op->type.base == base) {
     /* similar to PushCopy in ydata.c */
     Symbol* stack = sp + 1;
     Symbol* s = op->owner;
     int isDB = (s->ops == &dataBlockSym);
     stack->ops = s->ops;
-    if (isDB) stack->value.db = Ref(s->value.db);
-    else stack->value = s->value;
+    if (isDB) {
+      stack->value.db = Ref(s->value.db);
+    } else {
+      stack->value = s->value;
+    }
     sp = stack; /* sp updated AFTER new stack element intact */
     return (isDB ? op->value : &sp->value);
   } else {
-    return (void*)(((Array*)(PushDataBlock(NewArray(base, op->type.dims))))->value.c);
+    Array* arr = (Array*)PushDataBlock(NewArray(base, op->type.dims));
+    return (void*)(arr->value.c);
   }
 }
 
-static void unary_worker(int nArgs, looper_t* DLooper, looper_t* ZLooper)
+typedef void math_func_f(float dst[restrict],
+                         const float src[restrict], long number);
+
+typedef void math_func_d(double dst[restrict],
+                         const double src[restrict], long number);
+
+typedef void math_func_z(double dst[restrict],
+                         const double src[restrict], long number);
+
+static void apply_unary_math_func(int argc,
+                                  math_func_f* func_f,
+                                  math_func_d* func_d,
+                                  math_func_z* func_z)
 {
+  if (argc != 1) YError("expecting exactly one argument");
+  if (sp->ops == NULL) YError("unexpected keyword");
   Operand op;
-  int promoteID;
-  if (nArgs!=1) YError("expecting exactly one argument");
-  if (!sp->ops) YError("unexpected keyword");
   sp->ops->FormOperand(sp, &op);
-  promoteID = op.ops->promoteID;
-  if (promoteID <= T_DOUBLE) {
-    if (promoteID < T_DOUBLE) op.ops->ToDouble(&op);
-    DLooper(build_result(&op, &doubleStruct), op.value, op.type.number);
-    pop_to_d(sp - 2);
-  } else {
-    if (promoteID>T_COMPLEX) YError("expecting numeric argument");
-    ZLooper(build_result(&op, &complexStruct), op.value, 2*op.type.number);
+  int type = op.ops->typeID;
+  if (type == T_FLOAT && func_f != NULL) {
+    func_d(build_result(&op, &floatStruct), op.value, op.type.number);
     PopTo(sp - 2);
+  } else if (type <= T_DOUBLE && func_d != NULL) {
+    if (type < T_DOUBLE) {
+      op.ops->ToDouble(&op);
+      type = op.ops->typeID;
+    }
+    func_d(build_result(&op, &doubleStruct), op.value, op.type.number);
+    pop_to_d(sp - 2);
+  } else if (type == T_COMPLEX && func_z != NULL) {
+    func_z(build_result(&op, &complexStruct), op.value, op.type.number);
+    PopTo(sp - 2);
+  } else {
+    YError("unexpected type of argument");
   }
   Drop(1);
 }
 
 /* ----- sinc(x) = sin(PI*x)/PI/x ----- */
 
-static void sincDLoop(double* dst, const double* src, const long n);
-static void sincZLoop(double* dst, const double* src, const long n) ;
+static void sinc_f(float dst[restrict], const float src[restrict], long n)
+{
+#if NORMALIZED_SINC
+  const float pi = PI;
+#endif
+  for (long i = 0; i < n; ++i) {
+    float x = src[i];
+    if (x == 0.0) {
+      dst[i] = 1.0;
+    } else {
+#if NORMALIZED_SINC
+      x *= pi;
+#endif
+      dst[i] = sinf(x)/x;
+    }
+  }
+}
 
-void Y_sinc(int nArgs) { unary_worker(nArgs, &sincDLoop, &sincZLoop); }
-
-static void sincDLoop(double* dst, const double* src, const long n)
+static void sinc_d(double dst[restrict], const double src[restrict], long n)
 {
 #if NORMALIZED_SINC
   const double pi = PI;
@@ -134,24 +156,24 @@ static void sincDLoop(double* dst, const double* src, const long n)
   }
 }
 
-static void sincZLoop(double* dst, const double* src, const long n)
+static void sinc_z(double dst[restrict], const double src[restrict], long n)
 {
 #if NORMALIZED_SINC
   const double pi = PI;
 #endif
-  double lr, li, rr, ri;
-  long i;
-
-  for (i=0 ; i<n ; i+=2) {
-    rr = src[i];
-    ri = src[i+1];
-    if (rr || ri) {
+  for (long i = 0; i < n; i += 2) {
+    double rr = src[i];
+    double ri = src[i+1];
+    if (rr == 0 && ri == 0) {
+      dst[i] = 1.0;
+      dst[i+1] = 0.0;	/* Not needed? */
+    } else {
 #if NORMALIZED_SINC
       rr *= pi;
       ri *= pi;
 #endif
-      lr = sin(rr) * cosh(ri);
-      li = cos(rr) * sinh(ri);
+      double lr = sin(rr) * cosh(ri);
+      double li = cos(rr) * sinh(ri);
       /* Take care of overflows (this piece of code should be faster than
          DivideZ() in Yorick/ops2.c).  We already know that (rr,ri) != (0,0),
          nevertheless, Yorick catch divisions by zero. */
@@ -166,51 +188,37 @@ static void sincZLoop(double* dst, const double* src, const long n)
         dst[i]   = (lr*rr + li)*ri;
         dst[i+1] = (li*rr - lr)*ri;
       }
-    } else {
-      dst[i] = 1.0;
-      dst[i+1] = 0.0;	/* Not needed? */
     }
   }
+}
+
+void Y_sinc(int argc)
+{
+  apply_unary_math_func(argc, sinc_f, sinc_d, sinc_z);
 }
 
 /*---------------------------------------------------------------------------*/
 /* ARC */
 
-extern BuiltIn Y_arc;
-
-void Y_arc(int nArgs)
+static void arc_f(float dst[restrict], const float src[restrict], long n)
 {
-  if (nArgs != 1) YError("arc takes exactly one argument");
-  if (sp->ops == NULL) YError("unexpected keyword");
-  Operand op;
-  sp->ops->FormOperand(sp, &op);
-  int type = op.ops->typeID;
-  if (type < T_FLOAT) {
-    op.ops->ToDouble(&op);
-    type = op.ops->typeID;
+  const float rad = XJOIN(TWO_PI,F);
+  const float scl = XJOIN(ONE_OVER_TWO_PI,F);
+  for (long i = 0; i < n; ++i) {
+    dst[i] = src[i] - rad*roundf(scl*src[i]);
   }
-  if (type == T_DOUBLE) {
-    const double rad = TWO_PI;
-    const double scl = ONE_OVER_TWO_PI;
-    double* x = op.value;
-    double* y = build_result(&op, &doubleStruct);
-    long number = op.type.number;
-    for (long i = 0; i < number; ++i) {
-      y[i] = x[i] - rad*round(scl*x[i]);
-    }
-    pop_to_d(sp - 2);
-  } else if (type == T_FLOAT) {
-    const float rad = JOIN(TWO_PI,F);
-    const float scl = JOIN(ONE_OVER_TWO_PI,F);
-    float* x = op.value;
-    float* y = build_result(&op, &floatStruct);
-    long number = op.type.number;
-    for (long i = 0; i < number; ++i) {
-      y[i] = x[i] - rad*roundf(scl*x[i]);
-    }
-    PopTo(sp - 2);
-  } else {
-    YError("expecting non-complex numeric argument");
+}
+
+static void arc_d(double dst[restrict], const double src[restrict], long n)
+{
+  const double rad = TWO_PI;
+  const double scl = ONE_OVER_TWO_PI;
+  for (long i = 0; i < n; ++i) {
+    dst[i] = src[i] - rad*round(scl*src[i]);
   }
-  Drop(1);
+}
+
+void Y_arc(int argc)
+{
+  apply_unary_math_func(argc, arc_f, arc_d, NULL);
 }
