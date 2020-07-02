@@ -27,7 +27,6 @@
 #include "yeti.h"
 
 #if defined(__GNUC__) && __GNUC__ > 1
-extern void YError(const char* msg) __attribute__ ((noreturn));
 static void unexpected_keyword_argument() __attribute__ ((noreturn));
 #endif
 
@@ -97,9 +96,9 @@ static void fast_DivideZ(Operand* l, Operand* r);
 
 void Y_yeti_init(int argc)
 {
-  const char* version = YETI_XSTRINGIFY(YETI_VERSION_MAJOR) "." \
-    YETI_XSTRINGIFY(YETI_VERSION_MINOR) "." \
-    YETI_XSTRINGIFY(YETI_VERSION_MICRO) YETI_VERSION_SUFFIX;
+  const char* version = YOR_XSTRINGIFY(YETI_VERSION_MAJOR) "." \
+    YOR_XSTRINGIFY(YETI_VERSION_MINOR) "." \
+    YOR_XSTRINGIFY(YETI_VERSION_MICRO) YETI_VERSION_SUFFIX;
 
 #if USE_FASTER_DIVIDE_Z
   /* Replace complex division by faster code. */
@@ -429,7 +428,7 @@ void Y_get_encoding(int argc)
   if (argc != 1) YError("get_encoding takes exactly one argument");
   const char* name = YGetString(sp);
   if (name != NULL) {
-    long* result = YETI_PUSH_NEW_L(yeti_start_dimlist(32));
+    long* result = YOR_PUSH_NEW_ARRAY(long, yeti_start_dimlist(32));
     int c = name[0];
     for (int i = 0; i < ndb; ++i) {
       if (db[i].name[0] == c && strcmp(db[i].name, name) == 0) {
@@ -534,13 +533,13 @@ void Y_machine_constant(int argc)
   return;
 
  push_dval:
-  PushDoubleValue(dval);
+  yor_push_double_value(dval);
   return;
  push_fval:
-  *YETI_PUSH_NEW_F(NULL) = fval;
+  yor_push_float_value(fval);
   return;
  push_lval:
-  PushLongValue(lval);
+  yor_push_long_value(lval);
   return;
 }
 
@@ -755,3 +754,67 @@ static void smooth_single(double* x, double p25, double p50, double p75,
     }
   }
 }
+
+/*---------------------------------------------------------------------------*/
+/* PRODUCT OF ELEMENTS */
+
+#define PROD_X(R, T, op)                        \
+  do {                                          \
+    long n = op.type.number;                    \
+    R res = 1;                                  \
+    const T* src = op.value;                    \
+    for (long i = 0; i < n; ++i) {              \
+      res *= src[i];                            \
+    }                                           \
+    yor_push_value(res);                        \
+  }  while (0);
+
+#define PROD_Z(op)                              \
+  do {                                          \
+    long n = op.type.number;                    \
+    yor_complex_t res = { .re = 1, .im = 0 };   \
+    const yor_complex_t* src = op.value;        \
+    for (long i = 0; i < n; ++i) {              \
+      yor_complex_t val = src[i];               \
+      res = (yor_complex_t){                    \
+        .re = res.re*val.re - res.im*val.im,    \
+        .im = res.im*val.re + res.re*val.im };  \
+    }                                           \
+    yor_push_value(res);                        \
+  }  while (0);
+
+void Y_product(int argc)
+{
+  if (argc != 1) YError("prod() takes exactly one argument");
+  if (! sp->ops) YError("unexpected keyword argument");
+  Operand op;
+  sp->ops->FormOperand(sp, &op);
+  switch (op.ops->typeID) {
+  case YOR_CHAR:
+    PROD_X(long, char, op);
+    break;
+  case YOR_SHORT:
+    PROD_X(long, short, op);
+    break;
+  case YOR_INT:
+    PROD_X(long, int, op);
+    break;
+  case YOR_LONG:
+    PROD_X(long, long, op);
+    break;
+  case YOR_FLOAT:
+    PROD_X(double, float, op);
+    break;
+  case YOR_DOUBLE:
+    PROD_X(double, double, op);
+    break;
+  case YOR_COMPLEX:
+    PROD_Z(op);
+    break;
+  default:
+    yor_error("");
+  }
+}
+
+#undef PROD_X
+#undef PROD_Z

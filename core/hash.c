@@ -28,9 +28,9 @@
 /* DEFINITIONS FOR STRING HASH TABLES */
 
 /* Some macros to adapt implementation. */
-#define h_error(MSG)     YError(MSG)
-#define h_malloc(SIZE)   p_malloc(SIZE)
-#define h_free(ADDR)     p_free(ADDR)
+#define h_error(msg)     yor_error(msg)
+#define h_malloc(size)   p_malloc(size)
+#define h_free(addr)     p_free(addr)
 
 #define OFFSET(type, member) ((char*)&((type*)0)->member - (char*)0)
 
@@ -462,7 +462,7 @@ void Y_h_keys(int nargs)
   h_table_t* table = get_table(sp);
   size_t number = table->number;
   if (number > 0) {
-    char** result = YETI_PUSH_NEW_Q(yeti_start_dimlist(number));
+    char** result = YOR_PUSH_NEW_ARRAY(char*, yeti_start_dimlist(number));
     size_t j = 0;
     for (size_t i = 0; i < table->size; ++i) {
       for (h_entry_t* entry = table->bucket[i];
@@ -550,8 +550,7 @@ void Y_h_stat(int nargs)
   h_table_t* table = get_table(sp);
   size_t number = table->number;
   h_entry_t** bucket = table->bucket;
-  Array* array = YETI_PUSH_NEW_ARRAY_L(yeti_start_dimlist(number + 1));
-  long* result = array->value.l;
+  long* result = YOR_PUSH_NEW_ARRAY(long, yeti_start_dimlist(number + 1));
   for (size_t i = 0; i <= number; ++i) {
     result[i] = 0L;
   }

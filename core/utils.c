@@ -318,25 +318,30 @@ void yeti_pop_and_reduce_to(Symbol* s)
 /*---------------------------------------------------------------------------*/
 /* PUSH A SCALAR ON TOP OF THE STACK */
 
-void yeti_push_char_value(int value)
-{ YETI_PUSH_NEW_C(NULL)[0] = value; }
-
-void yeti_push_short_value(int value)
-{ YETI_PUSH_NEW_S(NULL)[0] = value; }
-
-void yeti_push_float_value(double value)
-{ YETI_PUSH_NEW_F(NULL)[0] = value; }
-
-void yeti_push_complex_value(double re, double im)
+void yor_push_char_value(char val)
 {
-  double* ptr = YETI_PUSH_NEW_Z(NULL);
-  ptr[0] = re;
-  ptr[1] = im;
+  YOR_PUSH_NEW_ARRAY(char, NULL)[0] = val;
 }
 
-void yeti_push_string_value(const char* value)
+void yor_push_short_value(short val)
 {
-  YETI_PUSH_NEW_Q(NULL)[0] = (value ? p_strcpy((char*)value) : NULL);
+  YOR_PUSH_NEW_ARRAY(short, NULL)[0] = val;
+}
+
+void yor_push_float_value(float val)
+{
+  YOR_PUSH_NEW_ARRAY(float, NULL)[0] = val;
+}
+
+void yor_push_complex_value(yor_complex_t val)
+{
+  YOR_PUSH_NEW_ARRAY(yor_complex_t, NULL)[0] = val;
+}
+
+void yor_push_string_value(const char* str)
+{
+  YOR_PUSH_NEW_ARRAY(yor_string_t, NULL)[0] =
+    (str != NULL ? p_strcpy((char*)str) : NULL);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -674,7 +679,7 @@ void* yeti_push_workspace(size_t nbytes)
 {
   /* EXTRA is the number of bytes needed to store DataBlock header rounded
      up to the size of a double (to avoid alignment errors). */
-  const size_t extra = YETI_ROUND_UP(sizeof(ws_t), sizeof(double));
+  const size_t extra = YOR_ROUND_UP(sizeof(ws_t), sizeof(double));
   ws_t* ws = p_malloc(nbytes + extra);
   ws->references = 0;
   ws->ops = &wsOps;

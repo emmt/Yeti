@@ -2504,6 +2504,16 @@ extern make_dimlist;
    SEE ALSO: array, build_dimlist.
  */
 
+extern product;
+/* DOCUMENT product(x);
+
+     Yield the product of the elements of X.  Result is a scalar of type
+     `long`, `double` or `complex` depending on the type of the elements of X
+     (integer, floating-point or complex).
+
+   SEE ALSO: sum.
+*/
+
 /*---------------------------------------------------------------------------*/
 /* COMPLEX NUMBERS */
 

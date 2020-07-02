@@ -37,26 +37,26 @@
 /*---------------------------------------------------------------------------*/
 /* USEFUL MACROS */
 
-#define YETI_OFFSET_OF(T, m) ((char*)&((T*)0)->m - (char*)0)
+#define YOR_OFFSET_OF(T, m) ((char*)&((T*)0)->m - (char*)0)
 /*----- Yield offset of member M in structure of type T. */
 
-#define YETI_ROUND_UP(a,b) ((((a)+(b)-1)/(b))*(b))
+#define YOR_ROUND_UP(a,b) ((((a)+(b)-1)/(b))*(b))
 /*----- Return smallest multiple of integer B that is greater or equal
         integer A. */
 
-#define YETI_VERBATIM(x) x
+#define YOR_VERBATIM(x) x
 /*----- Yield argument without macro expansion. */
 
-#define YETI_XSTRINGIFY(x)  YETI_STRINGIFY(x)
+#define YOR_XSTRINGIFY(x)  YOR_STRINGIFY(x)
 /*----- Wrap argument in quotes with macro expansion. */
 
-#define YETI_STRINGIFY(x) # x
+#define YOR_STRINGIFY(x) # x
 /*----- Wrap argument in quotes without macro expansion. */
 
-#define YETI_XJOIN(a,b)   YETI_JOIN(a, b)
+#define YOR_XJOIN(a,b)   YOR_JOIN(a, b)
 /*----- Join arguments A and B with macro expansion. */
 
-#define YETI_JOIN(a,b)    a ## b
+#define YOR_JOIN(a,b)    a ## b
 /*----- Join arguments A and B without macro expansion. */
 
 /*---------------------------------------------------------------------------*/
@@ -69,25 +69,116 @@
 /*---------------------------------------------------------------------------*/
 /* C++ needs to know that types and declarations are C, not C++.  */
 #ifdef  __cplusplus
-# define _YETI_BEGIN_DECLS  extern "C" {
-# define _YETI_END_DECLS    }
+# define _YOR_BEGIN_DECLS  extern "C" {
+# define _YOR_END_DECLS    }
 #else
-# define _YETI_BEGIN_DECLS
-# define _YETI_END_DECLS
+# define _YOR_BEGIN_DECLS
+# define _YOR_END_DECLS
 #endif
 
-_YETI_BEGIN_DECLS
+_YOR_BEGIN_DECLS
 /*---------------------------------------------------------------------------*/
 
 /* Refine definition of YError to avoid GCC warnings (about uninitialized
    variables or reaching end of non-void function): */
 PLUG_API void YError(const char* msg) __attribute__ ((noreturn));
 
+#define yor_error(msg) YError(msg)
+
 extern void yeti_error(const char* str, ...) __attribute__ ((noreturn));
 /*----- Build error message from a list of strings (last element of the
         list must be NULL) and call YError.  The maximum length of the
         final message is 127 characters; otherwise the message get,
         silently truncated. */
+
+
+/*---------------------------------------------------------------------------*/
+/* YORICK BASIC TYPES */
+
+#define YOR_CHAR       T_CHAR
+#define YOR_SHORT      T_SHORT
+#define YOR_INT        T_INT
+#define YOR_LONG       T_LONG
+#define YOR_FLOAT      T_FLOAT
+#define YOR_DOUBLE     T_DOUBLE
+#define YOR_COMPLEX    T_COMPLEX
+#define YOR_STRING     T_STRING
+#define YOR_POINTER    T_POINTER
+#define YOR_STRUCT     T_STRUCT
+#define YOR_RANGE      T_RANGE
+#define YOR_LVALUE     T_LVALUE
+#define YOR_VOID       T_VOID
+#define YOR_FUNCTION   T_FUNCTION
+#define YOR_BUILTIN    T_BUILTIN
+#define YOR_STRUCTDEF  T_STRUCTDEF
+#define YOR_STREAM     T_STREAM
+#define YOR_OPAQUE     T_OPAQUE
+
+/**
+ * @def YOR_TYPEID(T)
+ *
+ * Yield the Yorick type identifier corresponding to C type T which must be a
+ * basic array element type (numerical or string).
+ */
+#define YOR_TYPEID(T)                           \
+  _Generic((T){0},                              \
+           char:          YOR_CHAR,             \
+           short:         YOR_SHORT,            \
+           int:           YOR_INT,              \
+           long:          YOR_LONG,             \
+           float:         YOR_FLOAT,            \
+           double:        YOR_DOUBLE,           \
+           yor_complex_t: YOR_COMPLEX,          \
+           yor_string_t:  YOR_STRING)
+/* FIXME: Having YOR_POINTER mapped to `yor_pointer_t` would be unsafe
+   considering the way pointer objects are managed by Yorick. */
+
+/**
+ * Yorick complex type.
+ *
+ * A Yorick complex is just a pair of `double` (the real part followed by the
+ * imaginary part).  To create a complex value, use one of the following:
+ *
+ * ```.c
+ * (yor_complex_t){ real_part, im_part }
+ * (yor_complex_t){ .re = real_part, .im = im_part }
+ * _YOR_COMPLEX(real_part, im_part)
+ * ```
+ *
+ * where `real_part` and `imag_part` are expressions (they are evaluated once
+ * by the macro @ref YOR_COMPLEX).
+ *
+ * If the members names are specified, real and imaginary parts can be given in
+ * any order, and if one is omitted, its value is assumed to be zero.
+ */
+typedef struct _yor_complex { double re, im; } yor_complex_t;
+
+/**
+ * @def _YOR_COMPLEX(r,i)
+ *
+ * Yield a Yorick complex value whose real and imaginary parts are
+ * the result of the expressions `r` and `i` respectively.
+ */
+#define _YOR_COMPLEX(r,i) ((yor_complex_t){ .re = (r), .im = (i) })
+
+/**
+ * Yorick string type.
+ *
+ * All Yorick strings are dynamically allocated (with `p_malloc`) or `NULL`.
+ * Yorick calls `p_free` on a string when no longer needed.  There is no
+ * reference counter.  this means that strings must be systematically copied.
+ */
+typedef char* yor_string_t;
+
+/**
+ * Yorick pointer type.
+ *
+ * Beware that Yorick manage pointer onjects in a very special way.
+ */
+typedef void* yor_pointer_t;
+
+
+/*---------------------------------------------------------------------------*/
 
 /* The following routines/macros are designed to simplify the handling of
    Yorick's symbols. */
@@ -131,7 +222,7 @@ extern int yeti_is_void(Symbol* s);
         yeti_is_void checks the datablock Operations address. */
 
 extern void yeti_debug_symbol(Symbol* s);
-/*-----	Print-out contents of symbol *S. */
+/*----- Print-out contents of symbol *S. */
 
 extern void yeti_bad_argument(Symbol* s) __attribute__ ((noreturn));
 /*----- Trigger an error (by calling YError) due to a bad built-in routine
@@ -139,7 +230,7 @@ extern void yeti_bad_argument(Symbol* s) __attribute__ ((noreturn));
         resolved (see for instance YETI_SOLVE_REFERENCE). */
 
 extern void yeti_unknown_keyword(void) __attribute__ ((noreturn));
-/*-----	Call YError with the message:
+/*----- Call YError with the message:
           "unrecognized keyword in builtin function call". */
 
 extern DataBlock* yeti_get_datablock(Symbol* s, const Operations* ops);
@@ -160,17 +251,17 @@ extern Array* yeti_get_array(Symbol* s, int nil_ok);
         returns. */
 
 extern int yeti_get_boolean(Symbol* s);
-/*-----	Return 1/0 according to the value of symbol S.  The result should
+/*----- Return 1/0 according to the value of symbol S.  The result should
         be the same as the statement (s?1:0) in Yorick. */
 
 extern long yeti_get_optional_integer(Symbol* s, long defaultValue);
-/*-----	Return the value of symbol `*s' if it is a scalar (or 1 element array)
+/*----- Return the value of symbol `*s' if it is a scalar (or 1 element array)
         integer (char, short, int or long) and `defaultValue' is symbol is
         void.  Call yeti_bad_argument otherwise. */
 
 typedef struct yeti_scalar yeti_scalar_t;
 extern yeti_scalar_t* yeti_get_scalar(Symbol* s, yeti_scalar_t* scalar);
-/*-----	Fetch scalar value stored in Yorick symbol S and fill SCALAR
+/*----- Fetch scalar value stored in Yorick symbol S and fill SCALAR
         accordingly.  The return value is SCALAR. */
 
 struct yeti_scalar {
@@ -208,47 +299,88 @@ extern void** yeti_get_pointer(Symbol* s);
 /*----- Funtions to get a scalar value from Yorick stack element S. */
 
 
-extern void yeti_push_char_value(int value);
-extern void yeti_push_short_value(int value);
-extern void yeti_push_float_value(double value);
-extern void yeti_push_complex_value(double re, double im);
-extern void yeti_push_string_value(const char* value);
-#define     yeti_push_int_value(value)    PushIntValue(value)
-#define     yeti_push_long_value(value)   PushLongValue(value)
-#define     yeti_push_double_value(value) PushDoubleValue(value)
+extern void yor_push_char_value(char val);
+extern void yor_push_short_value(short val);
+#define     yor_push_int_value      PushIntValue
+#define     yor_push_long_value     PushLongValue
+extern void yor_push_float_value(float val);
+#define     yor_push_double_value   PushDoubleValue
+extern void yor_push_string_value(const char* str);
+extern void yor_push_complex_value(yor_complex_t val);
 /*----- These functions push a new scalar value of a particular type on top
-        of the stack.  String VALUE can be NULL. */
+        of the stack.  String STR can be NULL. */
 
-#define YETI_PUSH_NEW_ARRAY(SDEF, DIMS) ((Array*)PushDataBlock(NewArray(SDEF, DIMS)))
-#define YETI_PUSH_NEW_ARRAY_C(DIMS) YETI_PUSH_NEW_ARRAY(&charStruct,    DIMS)
-#define YETI_PUSH_NEW_ARRAY_S(DIMS) YETI_PUSH_NEW_ARRAY(&shortStruct,   DIMS)
-#define YETI_PUSH_NEW_ARRAY_I(DIMS) YETI_PUSH_NEW_ARRAY(&intStruct,     DIMS)
-#define YETI_PUSH_NEW_ARRAY_L(DIMS) YETI_PUSH_NEW_ARRAY(&longStruct,    DIMS)
-#define YETI_PUSH_NEW_ARRAY_F(DIMS) YETI_PUSH_NEW_ARRAY(&floatStruct,   DIMS)
-#define YETI_PUSH_NEW_ARRAY_D(DIMS) YETI_PUSH_NEW_ARRAY(&doubleStruct,  DIMS)
-#define YETI_PUSH_NEW_ARRAY_Z(DIMS) YETI_PUSH_NEW_ARRAY(&complexStruct, DIMS)
-#define YETI_PUSH_NEW_ARRAY_Q(DIMS) YETI_PUSH_NEW_ARRAY(&stringStruct,  DIMS)
-#define YETI_PUSH_NEW_ARRAY_P(DIMS) YETI_PUSH_NEW_ARRAY(&pointerStruct, DIMS)
-/*----- These macros allocate a  new Yorick array with dimension list DIMS,
-        push it  on top of  the stack and  return the address of  the array
-        structure.  There  must be an element  left on top of  the stack to
-        store the new array.  See also: YETI_PUSH_NEW_. */
+#define yeti_push_char_value(val)    yor_push_char_value(val)
+#define yeti_push_short_value(val)   yor_push_short_value(val)
+#define yeti_push_int_value(val)     yor_push_int_value(val)
+#define yeti_push_long_value(val)    yor_push_long_value(val)
+#define yeti_push_float_value(val)   yor_push_float_value(val)
+#define yeti_push_double_value(val)  yor_push_double_value(val)
+#define yeti_push_complex_value(re, im) \
+  yor_push_complex_value(_YOR_COMPLEX(re, im))
+#define yeti_push_string_value(str)  yor_push_string_value(str)
 
+/**
+ * @def yor_push_value(x)
+ *
+ * Push a scalar value on top of Yorick's stack calling the right function
+ * according to the argument type.  For types (like unsigned/signed char,
+ * unsigned int, etc.) not directly supported by Yorick, argument must be cast
+ * to one of the supported types.
+ */
+#define yor_push_value(x)                               \
+  _Generic(x,                                           \
+           char:           yor_push_char_value,         \
+           short:          yor_push_short_value,        \
+           int:            yor_push_int_value,          \
+           long:           yor_push_long_value,         \
+           float:          yor_push_float_value,        \
+           double:         yor_push_double_value,       \
+           yor_complex_t:  yor_push_complex_value,      \
+           yor_string_t:   yor_push_string_value)(x)
 
-#define YETI_PUSH_NEW_(SDEF, DIMS, MEMBER) (YETI_PUSH_NEW_ARRAY(SDEF, DIMS)->value.MEMBER)
-#define YETI_PUSH_NEW_C(DIMS) YETI_PUSH_NEW_(&charStruct,    DIMS, c)
-#define YETI_PUSH_NEW_S(DIMS) YETI_PUSH_NEW_(&shortStruct,   DIMS, s)
-#define YETI_PUSH_NEW_I(DIMS) YETI_PUSH_NEW_(&intStruct,     DIMS, i)
-#define YETI_PUSH_NEW_L(DIMS) YETI_PUSH_NEW_(&longStruct,    DIMS, l)
-#define YETI_PUSH_NEW_F(DIMS) YETI_PUSH_NEW_(&floatStruct,   DIMS, f)
-#define YETI_PUSH_NEW_D(DIMS) YETI_PUSH_NEW_(&doubleStruct,  DIMS, d)
-#define YETI_PUSH_NEW_Z(DIMS) YETI_PUSH_NEW_(&complexStruct, DIMS, d)
-#define YETI_PUSH_NEW_Q(DIMS) YETI_PUSH_NEW_(&stringStruct,  DIMS, q)
-#define YETI_PUSH_NEW_P(DIMS) YETI_PUSH_NEW_(&pointerStruct, DIMS, p)
-/*----- These macros allocate a  new Yorick array with dimension list DIMS,
-        push it  on top  of the stack  and return  the base address  of the
-        array  contents.   See  YETI_PUSH_NEW_ARRAY  for side  effects  and
+#define YOR_STRUCT_DEF(T)                       \
+  _Generic((T){0},                              \
+           char:          charStruct,           \
+           short:         shortStruct,          \
+           int:           intStruct,            \
+           long:          longStruct,           \
+           float:         floatStruct,          \
+           double:        doubleStruct,         \
+           yor_complex_t: complexStruct,        \
+           yor_string_t:  stringStruct,         \
+           yor_pointer_t: pointerStruct)
+
+#define YOR_PUSH_NEW_ARRAY(T, DIMS)                                     \
+  _Generic((T){0},                                                      \
+           char:          _YOR_PUSH_NEW_ARRAY(charStruct,    DIMS, c),  \
+           short:         _YOR_PUSH_NEW_ARRAY(shortStruct,   DIMS, s),  \
+           int:           _YOR_PUSH_NEW_ARRAY(intStruct,     DIMS, i),  \
+           long:          _YOR_PUSH_NEW_ARRAY(longStruct,    DIMS, l),  \
+           float:         _YOR_PUSH_NEW_ARRAY(floatStruct,   DIMS, f),  \
+           double:        _YOR_PUSH_NEW_ARRAY(doubleStruct,  DIMS, d),  \
+           yor_complex_t: ((yor_complex_t*)_YOR_PUSH_NEW_ARRAY(complexStruct, DIMS, d)), \
+           yor_string_t:  _YOR_PUSH_NEW_ARRAY(stringStruct,  DIMS, q),  \
+           yor_pointer_t: _YOR_PUSH_NEW_ARRAY(pointerStruct, DIMS, p))
+/*----- Call this macro to allocate a new Yorick array with dimension list
+        DIMS, push it on top of the stack and get the base address of the array
+        contents.  See YOR_PUSH_NEW_ARRAY_OBJECT for side effects and
         restrictions. */
+
+// Helper macro for YOR_PUSH_NEW_ARRAY.
+#define _YOR_PUSH_NEW_ARRAY(SDEF, DIMS, MEMB) \
+  (((Array*)PushDataBlock(NewArray(&(SDEF), DIMS)))->value.MEMB)
+
+#define YOR_NEW_ARRAY_OBJECT(T, DIMS) \
+  NewArray(&YOR_STRUCT_DEF(T), DIMS)
+
+#define YOR_PUSH_NEW_ARRAY_OBJECT(T, DIMS) \
+  ((Array*)PushDataBlock(YOR_NEW_ARRAY_OBJECT(T, DIMS)))
+/*----- Call this macro to allocate a new Yorick array with dimension list
+        DIMS, push it on top of the stack and get the address of the array
+        structure.  There must be an element left on top of the stack to store
+        the new array.  See also: YOR_PUSH_NEW_ARRAY. */
+
 
 /*---------------------------------------------------------------------------*/
 /* DIMENSIONS OF ARRAYS. */
@@ -299,7 +431,7 @@ extern int yeti_same_dims(const Dimension* dims1, const Dimension* dims2);
 
 extern void yeti_assert_same_dims(const Dimension* dims1,
                                   const Dimension* dims2);
-/*-----	Assert that two dimension lists are identical, raise an error (see
+/*----- Assert that two dimension lists are identical, raise an error (see
         YError) if this not the case. */
 
 extern long yeti_total_number(const Dimension* dims);
@@ -388,5 +520,5 @@ extern yeti_opaque_t* yeti_get_opaque(Symbol* stack,
         *of the object.  See yeti_get_opaque for side effects. */
 
 /*---------------------------------------------------------------------------*/
-_YETI_END_DECLS
+_YOR_END_DECLS
 #endif /* _YETI_H */

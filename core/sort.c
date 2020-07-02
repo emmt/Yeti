@@ -70,13 +70,11 @@ extern BuiltIn Y_heapsort;
 
 void Y_heapsort(int argc)
 {
-  Operand op;
-  index_t* index = NULL, number;
-
   if (argc != 1) YError("heapsort takes exactly one argument");
   if (! sp->ops) YError("unexpected keyword");
+  Operand op;
   sp->ops->FormOperand(sp, &op);
-  number = op.type.number;
+  index_t number = op.type.number;
   if (CalledAsSubroutine()) {
     switch (op.ops->typeID) {
     case T_CHAR:
@@ -99,6 +97,7 @@ void Y_heapsort(int argc)
       return;
     }
   } else {
+    index_t* index;
     switch (op.ops->typeID) {
     case T_CHAR:
     case T_SHORT:
@@ -106,7 +105,7 @@ void Y_heapsort(int argc)
     case T_LONG:
     case T_FLOAT:
     case T_DOUBLE:
-      index = YETI_PUSH_NEW_L(yeti_start_dimlist(number));
+      index = YOR_PUSH_NEW_ARRAY(index_t, yeti_start_dimlist(number));
       switch (op.ops->typeID) {
       case T_CHAR:
         _yeti_heapsort1_c(index, op.value, number);
