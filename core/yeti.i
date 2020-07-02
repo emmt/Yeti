@@ -2182,6 +2182,43 @@ FLT_EPSILON = machine_constant("FLT_EPSILON");
 FLT_MIN = machine_constant("FLT_MIN");
 FLT_MAX = machine_constant("FLT_MAX");
 
+local typemin, typemax;
+/* DOCUMENT typemin(T);
+         or typemax(T);
+
+     These functions yield the maximum/minimum value of integer or
+     floating-point type T.
+
+   SEE ALSO: sizeof.
+ */
+func typemin(T)
+{
+    minus_one = T(-1);
+    if (is_integer(minus_one)) {
+        return (minus_one < 0 ? (-(T(1) << (sizeof(T)*8 - 2)))*T(2) : T(0));
+    } else if (T == double) {
+        return -machine_constant("DBL_MAX");
+    } else if (T == float) {
+        return -machine_constant("FLT_MAX");
+    }
+    error, "invalid type";
+}
+
+func typemax(T)
+{
+    minus_one = T(-1);
+    if (is_integer(minus_one)) {
+        if (minus_one > 0) return minus_one;
+        one = T(1);
+        return ((one << (sizeof(T)*8 - 2)) - one)*T(2) + one;
+    } else if (T == double) {
+        return machine_constant("DBL_MAX");
+    } else if (T == float) {
+        return machine_constant("FLT_MAX");
+    }
+    error, "invalid type";
+}
+
 func symbol_info(____n____)
 /* DOCUMENT symbol_info, flags;
          or symbol_info, names;

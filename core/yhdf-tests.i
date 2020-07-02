@@ -186,3 +186,7 @@ func yhd_test_compare(a, b, name)
       name, typeof(a);
   }
 }
+
+if (batch()) {
+    yhd_test, swrite(format="/tmp/yhdf-tests-%d.tmp", lround(random()*typemax(long)));
+}
