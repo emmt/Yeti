@@ -286,4 +286,8 @@ func h_test(repeat)
   stat(1:max(where(stat)));
 }
 
-h_test;
+if (batch()) {
+    require, "yeti.i"; // FIXME: This should not be necessary.
+    h_test;
+    test_summary;
+}
