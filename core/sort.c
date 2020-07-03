@@ -75,61 +75,56 @@ void Y_heapsort(int argc)
   Operand op;
   sp->ops->FormOperand(sp, &op);
   index_t number = op.type.number;
+  int type = op.ops->typeID;
+  if (type < YOR_CHAR || type > YOR_DOUBLE) {
+    yor_error("bad data type");
+  }
+  void* array = op.value;
   if (CalledAsSubroutine()) {
-    switch (op.ops->typeID) {
+    switch (type) {
     case YOR_CHAR:
-      heapsort_c(op.value, number);
+      heapsort_c(array, number);
       return;
     case YOR_SHORT:
-      heapsort_s(op.value, number);
+      heapsort_s(array, number);
       return;
     case YOR_INT:
-      heapsort_i(op.value, number);
+      heapsort_i(array, number);
       return;
     case YOR_LONG:
-      heapsort_l(op.value, number);
+      heapsort_l(array, number);
       return;
     case YOR_FLOAT:
-      heapsort_f(op.value, number);
+      heapsort_f(array, number);
       return;
     case YOR_DOUBLE:
-      heapsort_d(op.value, number);
+      heapsort_d(array, number);
       return;
     }
   } else {
-    index_t* index;
-    switch (op.ops->typeID) {
+    index_t* index = YOR_PUSH_NEW_ARRAY(index_t, yor_start_dimlist(number));
+    switch (type) {
     case YOR_CHAR:
+      heapsort1_c(index, array, number);
+      return;
     case YOR_SHORT:
+      heapsort1_s(index, array, number);
+      return;
     case YOR_INT:
+      heapsort1_i(index, array, number);
+      return;
     case YOR_LONG:
+      heapsort1_l(index, array, number);
+      return;
     case YOR_FLOAT:
+      heapsort1_f(index, array, number);
+      return;
     case YOR_DOUBLE:
-      index = YOR_PUSH_NEW_ARRAY(index_t, yor_start_dimlist(number));
-      switch (op.ops->typeID) {
-      case YOR_CHAR:
-        heapsort1_c(index, op.value, number);
-        break;
-      case YOR_SHORT:
-        heapsort1_s(index, op.value, number);
-        break;
-      case YOR_INT:
-        heapsort1_i(index, op.value, number);
-        break;
-      case YOR_LONG:
-        heapsort1_l(index, op.value, number);
-        break;
-      case YOR_FLOAT:
-        heapsort1_f(index, op.value, number);
-        break;
-      default:
-        heapsort1_d(index, op.value, number);
-        break;
-      }
+      heapsort1_d(index, array, number);
       return;
     }
   }
-  yor_error("bad data type");
+  yor_error("bad data type (BUG)");
 }
 
 extern BuiltIn Y_quick_select;
@@ -201,7 +196,6 @@ void Y_quick_select(int argc)
   number = last - first + 1;
   k -= first; /* must be zero-based index */
   ptr = (void*)(((char*)ptr) + offset*elsize);
-
 
   switch (type) {
   case YOR_CHAR:
@@ -280,16 +274,19 @@ static void HEAPSORT(value_t a[], const index_t n)
 
 #ifdef HEAPSORT0
 /* HEAPSORT0 - indirect sorting of an array, with C-indexing (starting at 0) */
-static void HEAPSORT0(index_t index[], const value_t a[], const index_t n)
+static void HEAPSORT0(index_t index[restrict],
+                      const value_t a[restrict],
+                      const index_t n)
 {
-  index_t i,j,k,l,isave;
-  value_t asave;
-
-  for (i=0 ; i<n ; ++i) index[i] = i;
+  // Initialize index table, assuming 0-based indices.
+  for (index_t i = 0; i < n; ++i) {
+    index[i] = i;
+  }
   if (n < 2) return;
-  k = n/2;
-  l = n - 1;
+  index_t k = n/2;
+  index_t l = n - 1;
   for (;;) {
+    index_t isave;
     if (k > 0) {
       isave = index[--k];
     } else {
@@ -300,8 +297,9 @@ static void HEAPSORT0(index_t index[], const value_t a[], const index_t n)
         return;
       }
     }
-    asave = a[isave];
-    i = k;
+    value_t asave = a[isave];
+    index_t i = k;
+    index_t j;
     while ((j = 2*i + 1) <= l) {
       if (j < l && a[index[j]] < a[index[j + 1]]) ++j;
       if (a[index[j]] <= asave) break;
@@ -316,17 +314,20 @@ static void HEAPSORT0(index_t index[], const value_t a[], const index_t n)
 #ifdef HEAPSORT1
 /* HEAPSORT1 - indirect sorting of an array, with Yorick/FORTRAN indexing
    (starting at 1) */
-static void HEAPSORT1(index_t index[], const value_t* a, index_t n)
+static void HEAPSORT1(index_t index[restrict],
+                      const value_t* restrict a,
+                      const index_t n)
 {
-  index_t i,j,k,l,isave;
-  value_t asave;
-
-  for (i=0 ; i<n ; ++i) index[i] = i + 1;
+  // Initialize index table, assuming 1-based indices.
+  for (index_t i = 0; i < n; ++i) {
+    index[i] = i + 1;
+  }
   if (n < 2) return;
-  --a;
-  k = n/2;
-  l = n - 1;
+  --a; // offset array for 1-based indexing
+  index_t k = n/2;
+  index_t l = n - 1;
   for (;;) {
+    index_t isave;
     if (k > 0) {
       isave = index[--k];
     } else {
@@ -337,8 +338,9 @@ static void HEAPSORT1(index_t index[], const value_t* a, index_t n)
         return;
       }
     }
-    asave = a[isave];
-    i = k;
+    value_t asave = a[isave];
+    index_t i = k;
+    index_t j;
     while ((j = 2*i + 1) <= l) {
       if (j < l && a[index[j]] < a[index[j + 1]]) ++j;
       if (a[index[j]] <= asave) break;
@@ -352,21 +354,19 @@ static void HEAPSORT1(index_t index[], const value_t* a, index_t n)
 
 #ifdef QUICKSELECT
 #define SWAP(a,b) t=(a);(a)=(b);(b)=t
-static value_t QUICKSELECT(long k, long n, value_t arr[])
+static value_t QUICKSELECT(index_t k, index_t n, value_t arr[])
 {
-  index_t i, j, top, bot, mid;
-  value_t a, t;
-
-  bot = 0;
-  top = n - 1;
+  index_t bot = 0;
+  index_t top = n - 1;
   for (;;) {
+    value_t t;
     if (top <= bot + 1) {
       if (top == bot + 1 && arr[bot] > arr[top]) {
         SWAP(arr[bot], arr[top]);
       }
       return arr[k];
     } else {
-      mid = (bot + top)/2;
+      index_t mid = (bot + top)/2;
       SWAP(arr[mid], arr[bot + 1]);
       if (arr[bot] > arr[top]) {
         SWAP(arr[bot], arr[top]);
@@ -377,9 +377,9 @@ static value_t QUICKSELECT(long k, long n, value_t arr[])
       if (arr[bot] > arr[bot + 1]) {
         SWAP(arr[bot], arr[bot + 1]);
       }
-      i = bot + 1;
-      j = top;
-      a = arr[i];
+      index_t i = bot + 1;
+      index_t j = top;
+      value_t a = arr[i];
       for (;;) {
         while (arr[++i] < a)
           ;
