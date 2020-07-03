@@ -30,7 +30,7 @@
 
 #define index_t long
 
-#define value_t unsigned char
+#define value_t char
 #define HEAPSORT    heapsort_c
 #define HEAPSORT1   heapsort1_c
 #define QUICKSELECT quick_select_c
@@ -205,9 +205,9 @@ void Y_quick_select(int argc)
 
   switch (type) {
   case YOR_CHAR:
-    quick_select_c(k, number, (unsigned char*)ptr);
+    quick_select_c(k, number, (char*)ptr);
     if (! in_place) {
-      yor_push_char_value(((unsigned char*)ptr)[k]);
+      yor_push_char_value(((char*)ptr)[k]);
     }
     break;
   case YOR_SHORT:
