@@ -1,3 +1,4 @@
+require, "yeti-testing.i";
 
 func eval_me(self, x, y)
 {
@@ -61,7 +62,7 @@ func _h_test_eval1(self, key) { return h_get(self, key); }
 
 func h_test(repeat)
 {
-  require, "utils.i";
+  require, "utils.i"; // for stat, timer_elapsed, ...
   if (is_void(repeat)) repeat = 1;
   names = ["B_nu", "B_nu_bar", "B_nu_scale", "GISTPATH", "GIST_FORMAT",
            "HX_blkbnd", "HX_block", "LPR_FORMAT", "LUrcond", "LUsolve",
@@ -207,79 +208,67 @@ func h_test(repeat)
                    "mnx",++i, "mxx",++i, "dif",++i, "pcen",++i, "psum",++i,
                    "zcen",++i, "cum",++i, "ptp",++i, "uncp",++i);
 
+  /* tests */
+  local result;
   n = numberof(names);
-  ok = "OK - %s\n";
+  values = swrite(format="%s_%d",  names, indgen(1:n));
   tab = h_new();
   for (i = 1; i <= n; ++i) {
-    h_set, tab, names(i), names(i);
+      h_set, tab, names(i), values(i);
   }
-  if ((value = tab()) != n) {
-    error, swrite(format="tab() != %d\n", n);
-  } else {
-    write, format=ok, "tab() yields number of keys";
-  }
+  code = swrite(format="tab() == %d", n);
+  include, ["result = ("+code+")"], 1;
+  test_assert, result == 1n, code;
 
   /* Check h_keys(). */
-  value = h_keys(tab);
-  if (numberof(value) != n) {
-    error, swrite(format="tab() != %d\n", n);
-  } else if (anyof(value(sort(value)) != names(sort(names)))) {
-    error, swrite(format="h_keys(tab) != list of keys\n", n);
-  } else {
-    write, format=ok, "h_keys(tab) yields list of keys";
-  }
+  temp = h_keys(tab);
+  test_assert, (numberof(temp) == numberof(names) &&
+                allof(temp(sort(temp)) == names(sort(names)))),
+      "h_keys(tab) yields all key names";
 
   /* Check values stored into hash table. */
   for (i = 1; i <= n; ++i) {
     key = names(i);
-    if ((value = h_get(tab, key)) != key) {
-      error, swrite(format="h_get(tab, \"%s\") != \"%s\"\n", value, key);
-    }
+    val = values(i);
+    code = swrite(format="h_get(tab, \"%s\") == \"%s\"", key, val);
+    include, ["result = ("+code+")"], 1;
+    test_assert, result == 1n, code;
   }
-  write, format=ok, "h_get(tab, \"key\") yields value";
   for (i = 1; i <= n; ++i) {
     key = names(i);
-    if ((value = tab(key)) != key) {
-      error, swrite(format="tab(\"%s\") != \"%s\"\n", value, key);
-    }
+    val = values(i);
+    code = swrite(format="tab(\"%s\") == \"%s\"", key, val);
+    include, ["result = ("+code+")"], 1;
+    test_assert, result == 1n, code;
   }
-  write, format=ok, "tab(\"key\") yields value";
 
   /* Check for tab.key and h_get(tab, key=) syntaxes for non-keyword keys. */
-  local failure;
   for (i = 1; i <= n; ++i) {
     key = names(i);
     if (reserved(key)) continue;
-    expr = swrite(format="tab.%s == \"%s\"", key, key);
-    failure = 2; /* needed to detect syntax errors */
-    include, ["failure = (" + expr + " ? 0 : 1);"], 1;
-    if (failure) {
-      error, swrite(format="assertion failed: %s\n", expr);
-    }
+    val = values(i);
+    code = swrite(format="tab.%s == \"%s\"", key, val);
+    include, ["result = ("+code+")"], 1;
+    test_assert, result == 1n, code;
   }
-  write, format=ok, "tab.key yields value";
   for (i = 1; i <= n; ++i) {
     key = names(i);
     if (reserved(key)) continue;
-    expr = swrite(format="h_get(tab, %s=) == \"%s\"", key, key);
-    failure = 2; /* needed to detect syntax errors */
-    include, ["failure = (" + expr + " ? 0 : 1);"], 1;
-    if (failure) {
-      error, swrite(format="assertion failed: %s\n", expr);
-    }
+    val = values(i);
+    code = swrite(format="h_get(tab, %s=) == \"%s\"", key, val);
+    include, ["result = ("+code+")"], 1;
+    test_assert, result == 1n, code;
   }
-  write, format=ok, "h_get(tab, key=) yields value";
 
-  /* Check h_evaluator. */
+  /* Check custom evaluator. */
   h_evaluator, tab, "_h_test_eval1";
   for (i = 1; i <= n; ++i) {
     key = names(i);
-    if ((value = tab(key)) != key) {
-      error, swrite(format="tab(\"%s\") != \"%s\"\n", value, key);
-    }
+    val = values(i);
+    code = swrite(format="tab(\"%s\") == \"%s\"", key, val);
+    include, ["result = ("+code+")"], 1;
+    test_assert, result == 1n, code;
   }
-  write, format=ok, "tab(\"key\") yields value with h_evaluator";
-
 
   /* Speed test (can also be used to detect memory leaks). */
   write, "";

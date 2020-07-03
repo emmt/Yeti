@@ -21,13 +21,8 @@
 #include "yio.h"
 
 /*---------------------------------------------------------------------------*/
-/* PRIVATE ROUTINES */
 
-static void unexpected_keyword_argument(void);
-
-/*---------------------------------------------------------------------------*/
-
-char* yeti_strcpy(const char* s)
+char* yor_strcpy(const char* s)
 {
   if (s != NULL) {
     size_t len = strlen(s);
@@ -39,7 +34,7 @@ char* yeti_strcpy(const char* s)
   return (char*)0;
 }
 
-char* yeti_strncpy(const char* s, size_t len)
+char* yor_strncpy(const char* s, size_t len)
 {
   if (s != NULL) {
     char* t = p_stralloc(len);
@@ -50,7 +45,7 @@ char* yeti_strncpy(const char* s, size_t len)
   return (char*)0;
 }
 
-int yeti_is_nil(Symbol* s)
+int yor_is_nil(Symbol* s)
 {
   YETI_SOLVE_REFERENCE(s);
   return (s->ops == &dataBlockSym && s->value.db == &nilDB);
@@ -58,7 +53,7 @@ int yeti_is_nil(Symbol* s)
 
 #undef FUNCTION
 #define FUNCTION(NAME, OPS)                                             \
-  int yeti_is_##NAME(Symbol* s)                                         \
+  int yor_is_##NAME(Symbol* s)                                         \
   {                                                                     \
     YETI_SOLVE_REFERENCE(s);                                            \
     return (s->ops == &dataBlockSym && s->value.db->ops == &OPS);       \
@@ -68,7 +63,7 @@ FUNCTION(range, rangeOps)
 FUNCTION(structdef, structDefOps)
 FUNCTION(stream, streamOps)
 
-void yeti_bad_argument(Symbol* s)
+void yor_bad_argument(Symbol* s)
 {
   static char buf[80];
   char* msg;
@@ -94,18 +89,22 @@ void yeti_bad_argument(Symbol* s)
   } else {
     msg = "***BUG*** unknown symbol type";
   }
-  YError(msg);
+  yor_error(msg);
 }
 
-static void unexpected_keyword_argument(void)
-{ YError("unexpected keyword argument in builtin function call"); }
-
-void yeti_unknown_keyword(void)
-{ YError("unrecognized keyword in builtin function call"); }
-
-void yeti_debug_symbol(Symbol* s)
+void yor_unexpected_keyword_argument(void)
 {
-  fprintf(stderr, "yeti_debug_symbol: s = (Symbol*)0x%lx\n", (unsigned long)s);
+  yor_error("unexpected keyword argument in builtin function call");
+}
+
+void yor_unknown_keyword(void)
+{
+  yor_error("unrecognized keyword in builtin function call");
+}
+
+void yor_debug_symbol(Symbol* s)
+{
+  fprintf(stderr, "yor_debug_symbol: s = (Symbol*)0x%lx\n", (unsigned long)s);
   if (s == NULL) return;
   if (s->ops == &doubleScalar) {
     fprintf(stderr, "                s->ops = &doubleScalar\n");
@@ -153,7 +152,7 @@ void yeti_debug_symbol(Symbol* s)
   }
 }
 
-int yeti_get_boolean(Symbol* s)
+int yor_get_boolean(Symbol* s)
 {
   if (s->ops == &referenceSym) s = &globTab[s->index];
   if (s->ops == &intScalar)    return (s->value.i != 0);
@@ -164,24 +163,24 @@ int yeti_get_boolean(Symbol* s)
     s->ops->FormOperand(s, &op);
     if (! op.type.dims) {
       switch (op.ops->typeID) {
-      case T_CHAR:   return (*(char*)op.value != 0);
-      case T_SHORT:  return (*(short*)op.value != 0);
-      case T_INT:    return (*(int*)op.value != 0);
-      case T_LONG:   return (*(long*)op.value != 0L);
-      case T_FLOAT:  return (*(float*)op.value != 0.0F);
-      case T_DOUBLE: return (*(double*)op.value != 0.0);
-      case T_COMPLEX:return (((double*)op.value)[0] != 0.0 ||
+      case YOR_CHAR:   return (*(char*)op.value != 0);
+      case YOR_SHORT:  return (*(short*)op.value != 0);
+      case YOR_INT:    return (*(int*)op.value != 0);
+      case YOR_LONG:   return (*(long*)op.value != 0L);
+      case YOR_FLOAT:  return (*(float*)op.value != 0.0F);
+      case YOR_DOUBLE: return (*(double*)op.value != 0.0);
+      case YOR_COMPLEX:return (((double*)op.value)[0] != 0.0 ||
                              ((double*)op.value)[1] != 0.0);
-      case T_STRING: return (op.value != NULL);
-      case T_VOID:   return 0;
+      case YOR_STRING: return (op.value != NULL);
+      case YOR_VOID:   return 0;
       }
     }
   }
-  YError("bad non-boolean argument");
+  yor_error("bad non-boolean argument");
   return 0; /* avoid compiler warning */
 }
 
-long yeti_get_optional_integer(Symbol* s, long default_value)
+long yor_get_optional_integer(Symbol* s, long default_value)
 {
   if (s->ops == &longScalar) return s->value.l;
   if (s->ops == &intScalar) return s->value.i;
@@ -197,40 +196,40 @@ long yeti_get_optional_integer(Symbol* s, long default_value)
       if (op.ops == &voidOps) return default_value;
     }
   }
-  yeti_bad_argument(s);
+  yor_bad_argument(s);
 }
 
-yeti_scalar_t* yeti_get_scalar(Symbol* s,  yeti_scalar_t* scalar)
+yor_scalar_t* yor_get_scalar(Symbol* s,  yor_scalar_t* scalar)
 {
   if (s->ops == &longScalar) {
-    scalar->type = T_LONG;
+    scalar->type = YOR_LONG;
     scalar->value.l = s->value.l;
   } else if (s->ops == &doubleScalar) {
-    scalar->type = T_DOUBLE;
+    scalar->type = YOR_DOUBLE;
     scalar->value.d = s->value.d;
   } else if (s->ops == &intScalar) {
-    scalar->type = T_INT;
+    scalar->type = YOR_INT;
     scalar->value.i = s->value.i;
   } else {
     Operand op;
-    if (! s->ops) unexpected_keyword_argument();
+    if (s->ops == NULL) yor_unexpected_keyword_argument();
     s->ops->FormOperand(s, &op);
-    if (op.type.dims) YError("expecting scalar argument");
+    if (op.type.dims) yor_error("expecting scalar argument");
     scalar->type = op.ops->typeID;
     switch(scalar->type) {
 #define _(MEMBER, TYPE) scalar->value.MEMBER = *(TYPE*)(op.value); break
-    case T_CHAR:    _(c, char);
-    case T_SHORT:   _(s, short);
-    case T_INT:     _(i, int);
-    case T_LONG:    _(l, long);
-    case T_FLOAT:   _(f, float);
-    case T_DOUBLE:  _(d, double);
-    case T_COMPLEX:
+    case YOR_CHAR:    _(c, char);
+    case YOR_SHORT:   _(s, short);
+    case YOR_INT:     _(i, int);
+    case YOR_LONG:    _(l, long);
+    case YOR_FLOAT:   _(f, float);
+    case YOR_DOUBLE:  _(d, double);
+    case YOR_COMPLEX:
       scalar->value.z.re = ((double*)(op.value))[0];
       scalar->value.z.im = ((double*)(op.value))[1];
       break;
-    case T_STRING:  _(q, char*);
-    case T_POINTER: _(p, void*);
+    case YOR_STRING:  _(q, char*);
+    case YOR_POINTER: _(p, void*);
 #undef _
     default:
       scalar->value.p = op.value;
@@ -240,18 +239,18 @@ yeti_scalar_t* yeti_get_scalar(Symbol* s,  yeti_scalar_t* scalar)
 
 }
 
-DataBlock* yeti_get_datablock(Symbol* stack, const Operations* ops)
+DataBlock* yor_get_datablock(Symbol* stack, const Operations* ops)
 {
 #if 0
   if (stack->ops == &referenceSym) ReplaceRef(stack);
   if (stack->ops != &dataBlockSym || (ops && stack->value.db->ops != ops))
-    yeti_bad_argument(stack);
+    yor_bad_argument(stack);
   return stack->value.db;
 #else
   DataBlock* db;
   Symbol* sym = YETI_DEREFERENCE_SYMBOL(stack);
   if (sym->ops != &dataBlockSym || (ops && sym->value.db->ops != ops))
-    yeti_bad_argument(sym);
+    yor_bad_argument(sym);
   db = sym->value.db;
   if (sym != stack) {
     /* Replace reference onto the stack (equivalent to the statement
@@ -263,7 +262,7 @@ DataBlock* yeti_get_datablock(Symbol* stack, const Operations* ops)
 #endif
 }
 
-Array* yeti_get_array(Symbol* s, int nil_ok)
+Array* yor_get_array(Symbol* s, int nil_ok)
 {
 #if 0
   ReplaceRef(s);
@@ -287,7 +286,7 @@ Array* yeti_get_array(Symbol* s, int nil_ok)
     if (nil_ok && db == &nilDB) return NULL;
   }
 #endif
-  YError("unexpected non-array argument");
+  yor_error("unexpected non-array argument");
   return NULL; /* avoid compiler warning */
 }
 
@@ -295,7 +294,7 @@ Array* yeti_get_array(Symbol* s, int nil_ok)
 /* STACK MANAGEMENT */
 
 /* Pop topmost stack element in-place of S and drop all elements above S. */
-void yeti_pop_and_reduce_to(Symbol* s)
+void yor_pop_and_reduce_to(Symbol* s)
 {
   if (s < sp) {
     DataBlock* old = s->ops == &dataBlockSym? s->value.db : 0;
@@ -311,7 +310,7 @@ void yeti_pop_and_reduce_to(Symbol* s)
       }
     }
   } else if (s > sp) {
-    YError("attempt to pop outside the stack");
+    yor_error("attempt to pop outside the stack");
   }
 }
 
@@ -347,13 +346,13 @@ void yor_push_string_value(const char* str)
 /*---------------------------------------------------------------------------*/
 /* GET A SCALAR FROM THE STACK */
 
-void** yeti_get_pointer(Symbol* s)
+void** yor_get_pointer(Symbol* s)
 {
   Operand op;
-  if (!s->ops) unexpected_keyword_argument();
+  if (s->ops == NULL) yor_unexpected_keyword_argument();
   s->ops->FormOperand(s, &op);
-  if (op.ops->typeID != T_POINTER || op.type.dims)
-    YError("expecting scalar pointer argument");
+  if (op.ops->typeID != YOR_POINTER || op.type.dims)
+    yor_error("expecting scalar pointer argument");
   return *(void**)op.value;
 }
 
@@ -361,7 +360,7 @@ void** yeti_get_pointer(Symbol* s)
 /* ERROR MANAGEMENT */
 
 #define MSG_MAX_LEN 127
-void yeti_error(const char* str, ...)
+void yor_format_error(const char* str, ...)
 {
   unsigned int msglen = 0;
   char msg[MSG_MAX_LEN+1];
@@ -377,14 +376,14 @@ void yeti_error(const char* str, ...)
   }
   va_end(ap);
   msg[msglen] = 0;
-  YError(msg);
+  yor_error(msg);
 }
 #undef MSG_MAX_LEN
 
 /*---------------------------------------------------------------------------*/
 /* DIMENSIONS OF ARRAYS */
 
-void yeti_reset_dimlist(void)
+void yor_reset_dimlist(void)
 {
   /* tmpDims is a global temporary for Dimension lists under construction
      -- you should always use it, then just leave your garbage there when
@@ -395,7 +394,7 @@ void yeti_reset_dimlist(void)
   if (dims) FreeDimension(dims);
 }
 
-Dimension* yeti_start_dimlist(long number)
+Dimension* yor_start_dimlist(long number)
 {
   Dimension* dims = tmpDims;
   tmpDims = NULL;
@@ -403,14 +402,14 @@ Dimension* yeti_start_dimlist(long number)
   return tmpDims = NewDimension(number, 1L, NULL);
 }
 
-Dimension* yeti_grow_dimlist(long number)
+Dimension* yor_grow_dimlist(long number)
 {
   return tmpDims = NewDimension(number, 1L, tmpDims);
 }
 
 static void not_same_dims(void);
 
-int yeti_same_dims(const Dimension* dims1,
+int yor_same_dims(const Dimension* dims1,
                    const Dimension* dims2)
 {
   while (dims1 != dims2) {
@@ -423,7 +422,7 @@ int yeti_same_dims(const Dimension* dims1,
   return 1;
 }
 
-void yeti_assert_same_dims(const Dimension* dims1,
+void yor_assert_same_dims(const Dimension* dims1,
                            const Dimension* dims2)
 {
   while (dims1 != dims2) {
@@ -435,7 +434,7 @@ void yeti_assert_same_dims(const Dimension* dims1,
   }
 }
 
-long yeti_total_number(const Dimension* dims)
+long yor_total_number(const Dimension* dims)
 {
   long number = 1;
   while (dims != NULL) {
@@ -445,7 +444,7 @@ long yeti_total_number(const Dimension* dims)
   return number;
 }
 
-long yeti_total_number_2(const Dimension* dims1,
+long yor_total_number_2(const Dimension* dims1,
                          const Dimension* dims2)
 {
   long number = 1;
@@ -465,10 +464,10 @@ long yeti_total_number_2(const Dimension* dims1,
 
 static void not_same_dims(void)
 {
-  YError("input arrays must have same dimensions");
+  yor_error("input arrays must have same dimensions");
 }
 
-Dimension* yeti_make_dims(const long number[], const long origin[],
+Dimension* yor_make_dims(const long number[], const long origin[],
                           size_t ndims)
 {
   Dimension* dims = tmpDims;
@@ -488,7 +487,7 @@ Dimension* yeti_make_dims(const long number[], const long origin[],
   return tmpDims;
 }
 
-size_t yeti_get_dims(const Dimension* dims, long number[], long origin[],
+size_t yor_get_dims(const Dimension* dims, long number[], long origin[],
                      size_t maxdims)
 {
   size_t ndims = 0;
@@ -496,7 +495,7 @@ size_t yeti_get_dims(const Dimension* dims, long number[], long origin[],
     ++ndims;
   }
   if (ndims > maxdims) {
-    YError("too many dimensions");
+    yor_error("too many dimensions");
   }
   size_t i = ndims;
   if (origin != NULL) {
@@ -528,10 +527,10 @@ extern MemberOp GetMemberX;
 
 static void free_opaque(void* addr);
 static UnaryOp print_opaque;
-static void bad_opaque_type(const yeti_opaque_type_t* type);
+static void bad_opaque_type(const yor_opaque_type_t* type);
 
 static Operations opaque_ops = {
-  &free_opaque, T_OPAQUE, 0, T_STRING, "opaque_object",
+  &free_opaque, YOR_OPAQUE, 0, YOR_STRING, "opaque_object",
   {&PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX},
   &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX,
   &NegateX, &ComplementX, &NotX, &TrueX,
@@ -543,12 +542,12 @@ static Operations opaque_ops = {
 
 /* See `defmem.h' for explanations about meaning and usage of MemoryBlock
    structure. */
-static MemryBlock obj_block = {NULL, NULL, sizeof(yeti_opaque_t),
-                               64*sizeof(yeti_opaque_t)};
+static MemryBlock obj_block = {NULL, NULL, sizeof(yor_opaque_t),
+                               64*sizeof(yor_opaque_t)};
 
-yeti_opaque_t* yeti_new_opaque(void* data, const yeti_opaque_type_t* type)
+yor_opaque_t* yor_new_opaque(void* data, const yor_opaque_type_t* type)
 {
-  yeti_opaque_t* obj = NextUnit(&obj_block);
+  yor_opaque_t* obj = NextUnit(&obj_block);
   obj->references = 0;
   obj->ops = &opaque_ops;
   obj->type = type;
@@ -560,7 +559,7 @@ yeti_opaque_t* yeti_new_opaque(void* data, const yeti_opaque_type_t* type)
    instance that is no longer referenced */
 static void free_opaque(void* addr)
 {
-  yeti_opaque_t* obj = addr;
+  yor_opaque_t* obj = addr;
   if (obj->type && obj->type->delete) obj->type->delete(obj->data);
   FreeUnit(&obj_block, addr);
 }
@@ -568,7 +567,7 @@ static void free_opaque(void* addr)
 /* print_opaque is used by Yorick's info command */
 static void print_opaque(Operand* op)
 {
-  yeti_opaque_t* obj = (yeti_opaque_t*)op->value;
+  yor_opaque_t* obj = (yor_opaque_t*)op->value;
 
   if (obj->type->print) {
     obj->type->print(obj->data);
@@ -583,16 +582,16 @@ static void print_opaque(Operand* op)
   }
 }
 
-yeti_opaque_t* yeti_get_opaque(Symbol* stack, const yeti_opaque_type_t* type,
-                               int fatal)
+yor_opaque_t* yor_get_opaque(Symbol* stack, const yor_opaque_type_t* type,
+                             int fatal)
 {
-  yeti_opaque_t* obj;
+  yor_opaque_t* obj;
   Symbol* s = (stack->ops == &referenceSym) ? &globTab[stack->index] : stack;
   if (s->ops != &dataBlockSym || s->value.db->ops != &opaque_ops) {
-    if (fatal) YError("not an opaque object");
+    if (fatal) yor_error("not an opaque object");
     return NULL;
   }
-  obj = (yeti_opaque_t*)s->value.db;
+  obj = (yor_opaque_t*)s->value.db;
   if (type && obj->type != type) {
     if (fatal) bad_opaque_type(type);
     return NULL;
@@ -606,7 +605,7 @@ yeti_opaque_t* yeti_get_opaque(Symbol* stack, const yeti_opaque_type_t* type,
   return obj;
 }
 
-static void bad_opaque_type(const yeti_opaque_type_t* type)
+static void bad_opaque_type(const yor_opaque_type_t* type)
 {
 #undef MAXLEN
 #define MAXLEN 40
@@ -623,7 +622,7 @@ static void bad_opaque_type(const yeti_opaque_type_t* type)
     strcat(msg, type->name);
   }
   strcat(msg, " type)");
-  YError(msg);
+  yor_error(msg);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -649,7 +648,7 @@ extern UnaryOp EvalX, SetupX, PrintX;
 extern MemberOp GetMemberX;
 
 Operations wsOps = {
-  &FreeWS, T_OPAQUE, 0, /* promoteID = */ T_STRING /* means illegal */,
+  &FreeWS, YOR_OPAQUE, 0, /* promoteID = */ YOR_STRING /* means illegal */,
   "workspace",
   {&PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX},
   &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX,
@@ -675,7 +674,7 @@ static void PrintWS(Operand* op)
   ForceNewline();
 }
 
-void* yeti_push_workspace(size_t nbytes)
+void* yor_push_workspace(size_t nbytes)
 {
   /* EXTRA is the number of bytes needed to store DataBlock header rounded
      up to the size of a double (to avoid alignment errors). */

@@ -69,14 +69,14 @@ void Y_morph_dilation(int argc)
 static void morph_op(int argc, int mop)
 {
   if (argc != 2) {
-    YError((mop ?
-            "morph_dilation takes exactly 2 arguments" :
-            "morph_erosion takes exactly 2 arguments"));
+    yor_error((mop ?
+               "morph_dilation() takes exactly 2 arguments" :
+               "morph_erosion() takes exactly 2 arguments"));
   }
 
   /* Get input array. */
   Symbol* s = sp - 1;
-  if (s->ops == NULL) YError("unexpected keyword argument");
+  if (s->ops == NULL) yor_unexpected_keyword_argument();
   Operand op;
   Dimension* dims = s->ops->FormOperand(s, &op)->type.dims;
   long ndims = 0;
@@ -84,7 +84,7 @@ static void morph_op(int argc, int mop)
   long height = 0;
   long depth = 0;
   while (dims != NULL) {
-    if (++ndims > 3) YError("too many dimensions for input array");
+    if (++ndims > 3) yor_error("too many dimensions for input array");
     depth = height;
     height = width;
     width = dims->number;
@@ -102,7 +102,7 @@ static void morph_op(int argc, int mop)
        sphere. */
     long r = off[0];
     if (r < 0) {
-      YError("radius of structuring element must be non-negative");
+      yor_error("radius of structuring element must be non-negative");
     }
     Drop(1); /* to be able to push temporary workspace */
     long n = 2*r + 1;
@@ -110,7 +110,7 @@ static void morph_op(int argc, int mop)
     number = 0;
     if (depth > 1) {
       long mx = n*n*n; /* maximum number of offsets per dimension */
-      dx = yeti_push_workspace(3*sizeof(long)*mx);
+      dx = yor_push_workspace(3*sizeof(long)*mx);
       dy = dx + mx;
       dz = dy + mx;
       for (long z = -r; z <= r; ++z) {
@@ -135,7 +135,7 @@ static void morph_op(int argc, int mop)
       }
     } else if (height > 1) {
       long mx = n*n; /* maximum number of offsets per dimension */
-      dx = yeti_push_workspace(2*sizeof(long)*mx);
+      dx = yor_push_workspace(2*sizeof(long)*mx);
       dy = dx + mx;
       dz = NULL;
       for (long y = -r; y <= r; ++y) {
@@ -150,7 +150,7 @@ static void morph_op(int argc, int mop)
       }
     } else {
       long mx = n;
-      dx = yeti_push_workspace(sizeof(long)*mx);
+      dx = yor_push_workspace(sizeof(long)*mx);
       dy = NULL;
       dz = NULL;
       for (long x = -r; x <= r; ++x) {
@@ -161,7 +161,7 @@ static void morph_op(int argc, int mop)
   } else {
     if (ndims > 1) {
       if (dims->number != ndims) {
-        YError("last dimension of OFF not equal to number of dimensions of A");
+        yor_error("last dimension of OFF not equal to number of dimensions of A");
       }
       dims = dims->next;
     }
@@ -181,37 +181,37 @@ static void morph_op(int argc, int mop)
 #undef _
 #define _(T) (mop ? dilation_##T : erosion_##T)((void*)ap->value.T, \
               op.value, width, height, depth, dx, dy, dz, number); break
-  case T_CHAR:   _(c);
-  case T_SHORT:  _(s);
-  case T_INT:    _(i);
-  case T_LONG:   _(l);
-  case T_FLOAT:  _(f);
-  case T_DOUBLE: _(d);
+  case YOR_CHAR:   _(c);
+  case YOR_SHORT:  _(s);
+  case YOR_INT:    _(i);
+  case YOR_LONG:   _(l);
+  case YOR_FLOAT:  _(f);
+  case YOR_DOUBLE: _(d);
 #undef _
   default:
-    YError("bad data type");
+    yor_error("bad data type");
   }
 }
 
 /* almost the same as YGet_L */
 static long* get_offset(Symbol* s, Dimension** dims)
 {
-  if (s->ops == NULL) YError("unexpected keyword argument");
+  if (s->ops == NULL) yor_unexpected_keyword_argument();
   if (s->ops == &referenceSym && globTab[s->index].ops == &longScalar) {
     if (dims != NULL) *dims = 0;
     return &globTab[s->index].value.l;
   }
   Operand op;
   switch (s->ops->FormOperand(s, &op)->ops->typeID) {
-  case T_CHAR:
-  case T_SHORT:
-  case T_INT:
+  case YOR_CHAR:
+  case YOR_SHORT:
+  case YOR_INT:
     op.ops->ToLong(&op);
-  case T_LONG:
+  case YOR_LONG:
     if (dims) *dims = op.type.dims;
     return op.value;
   }
-  YError("bad data type for index offsets");
+  yor_error("bad data type for index offsets");
   return 0L;
 }
 

@@ -8,8 +8,18 @@ NOTATIONS
 
 YETI
 ----
-[ ] use GIT instead of RCS;
-[ ] autoload yhd_save, yhd_restore, etc.;
+[ ] add iterators
+    ```
+    for (itr = iterate(obj); itr; iterate(itr)) {
+       index = itr.idx;
+       value = itr.val;
+    }
+    ```
+    where `obj` can be an array, a list, a tuple, a range, a hash table.
+    Expression `itr.idx` yields the integer index, the key/name for a hash
+    table.  Expression `itr.val` yields the value.
+[+] use GIT instead of RCS;
+[+] autoload yhd_save, yhd_restore, etc.;
 [ ] add support for sparse matrix in YHD files;
 [ ] make a h_save and h_restore functions:
     h_save, tab, var1, var2, ...; // saves variables as members of tab

@@ -15,10 +15,8 @@
 
 #include <string.h>
 
-#include "plugin.h"
-#include "ydata.h"
+#include "yeti.h"
 #include "yio.h"
-#include "defmem.h"
 #include "pstdlib.h"
 
 /* Debug level: 0 or undefined = none,
@@ -58,7 +56,7 @@ static UnaryOp print_symlink;
 static MemberOp get_symlink_member;
 
 Operations symlink_ops = {
-  &free_symlink, T_OPAQUE, 0, T_STRING, "symlink",
+  &free_symlink, YOR_OPAQUE, 0, YOR_STRING, "symlink",
   {&PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX},
   &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX,
   &NegateX, &ComplementX, &NotX, &TrueX,
@@ -72,7 +70,7 @@ Operations symlink_ops = {
 /* Set up a block allocator which grabs space for 64 symlink_t objects at a
    time. */
 static MemryBlock symlink_block= {0, 0, sizeof(symlink_t),
-                               64*sizeof(symlink_t)};
+                                  64*sizeof(symlink_t)};
 
 static symlink_t* new_symlink(long index)
 {
@@ -108,7 +106,7 @@ static void dereference_symlink(Operand* op)
 #if defined(YETI_SYMLINK_DEBUG) && YETI_SYMLINK_DEBUG >= 1
   if (! owner || (owner - sp) > 0 || (owner - spBottom) < 0) {
     /* owner should be on stack if this called from Eval or Print */
-    YError("symbolic link object evaluated in illegal situation");
+    yor_error("symbolic link object evaluated in illegal situation");
   }
 #endif
   symlink_t* lnk = op->value;
@@ -119,14 +117,14 @@ static void dereference_symlink(Operand* op)
     Unref(owner->value.db);
 #if defined(YETI_SYMLINK_DEBUG) && YETI_SYMLINK_DEBUG >= 1
   } else {
-    YError("assertion failed for symbolic link object");
+    yor_error("assertion failed for symbolic link object");
 #endif
   }
   DataBlock* db;
   if (s->ops == &dataBlockSym) {
     db = s->value.db;
     if (db->ops == &symlink_ops) {
-      YError("illegal symbolic link to symbolic link");
+      yor_error("illegal symbolic link to symbolic link");
     }
     owner->value.db = Ref(db);
     owner->ops = s->ops;
@@ -151,29 +149,25 @@ static void get_symlink_member(Operand* op, char* name)
   op->ops->GetMember(op, name);
 }
 
-void Y_symlink_to_variable(int nargs)
+void Y_symlink_to_variable(int argc)
 {
-  if (nargs != 1) {
-    YError("symlink_to_variable takes exactly one argument");
+  if (argc != 1) {
+    yor_error("symlink_to_variable() takes exactly one argument");
   }
   if (sp->ops != &referenceSym) {
-    YError("expecting simple variable reference");
+    yor_error("expecting simple variable reference");
   }
   PushDataBlock(new_symlink(sp->index));
 }
 
-void Y_symlink_to_name(int nargs)
+void Y_symlink_to_name(int argc)
 {
-  if (nargs != 1) {
-    YError("symlink_to_name takes exactly one argument");
-  }
-  if (! sp->ops) {
-    YError("unexpected keyword argument");
-  }
+  if (argc != 1) yor_error("symlink_to_name() takes exactly one argument");
+  if (sp->ops == NULL) yor_unexpected_keyword_argument();
   Operand op;
   sp->ops->FormOperand(sp, &op);
-  if (op.ops->typeID != T_STRING || op.type.dims) {
-    YError("expecting scalar string argument");
+  if (op.ops->typeID != YOR_STRING || op.type.dims != NULL) {
+    yor_error("expecting scalar string argument");
   }
   const char* name = *(char**)op.value;
   long i = -1;
@@ -190,25 +184,25 @@ void Y_symlink_to_name(int nargs)
     }
   }
   if (i <= 0) {
-    YError("invalid symbol name");
+    yor_error("invalid symbol name");
   }
   PushDataBlock(new_symlink(Globalize(name, i)));
 }
 
-void Y_is_symlink(int nargs)
+void Y_is_symlink(int argc)
 {
-  if (nargs != 1) YError("is_symlink takes exactly one argument");
+  if (argc != 1) yor_error("is_symlink takes exactly one argument");
   Symbol* s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
   int result = (s->ops == &dataBlockSym && s->value.db->ops == &symlink_ops);
   PushIntValue(result);
 }
 
-void Y_name_of_symlink(int nargs)
+void Y_name_of_symlink(int argc)
 {
-  if (nargs != 1) YError("name_of_symlink takes exactly one argument");
+  if (argc != 1) yor_error("name_of_symlink takes exactly one argument");
   Symbol* s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
   if (s->ops != &dataBlockSym || s->value.db->ops != &symlink_ops) {
-    YError("expecting a symbolic link object");
+    yor_error("expecting a symbolic link object");
   }
   symlink_t* lnk = (symlink_t*)s->value.db;
   char* name = globalTable.names[lnk->index];
@@ -216,12 +210,12 @@ void Y_name_of_symlink(int nargs)
   array->value.q[0] = p_strcpy(name);
 }
 
-void Y_value_of_symlink(int nargs)
+void Y_value_of_symlink(int argc)
 {
-  if (nargs != 1) YError("value_of_symlink takes exactly one argument");
+  if (argc != 1) yor_error("value_of_symlink takes exactly one argument");
   Symbol* s = (sp->ops == &referenceSym ? &globTab[sp->index] : sp);
   if (s->ops != &dataBlockSym || s->value.db->ops != &symlink_ops) {
-    YError("expecting a symbolic link object");
+    yor_error("expecting a symbolic link object");
   }
   symlink_t* lnk = (symlink_t*)s->value.db;
   s = &globTab[lnk->index];

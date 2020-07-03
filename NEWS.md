@@ -1,3 +1,6 @@
+* New `typemin` and `typemax` functions to get the minimum and maximum values
+  for a numerical type.
+* New `product` function to compute the prodcut of the elements of an array.
 * New `tuple` function to create lightweight tuple-like objects.
 * Change to more permissive MIT "expat" license.
 * Yeti can be compiled from anywhere (just run the `configure` script in the
@@ -5,6 +8,10 @@
 * The `yeti_` prefix has been removed from all `yeti_*.i` files.  If you rely
   on auto-load and do not explicitly `include` such files, this should be
   automatically handled for you.
+* Yeti functions and macros are now prefixed by `yor_` or `YOR_` (and perhasp
+  `_yor_` or `_YOR_` for private ones).  Header file `"yeti-compat.h"` is
+  provided to help porting old code based on Yeti library.  Theses prefixes are
+  also used to alias some Yorick symbols.
 * Yeti components are now independent from Yeti itself (they all have their own
   auto-load file, the name of associated dynamic library is `yor_$pkg.i` with
   `$pkg` the name of the component).

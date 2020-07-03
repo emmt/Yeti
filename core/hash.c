@@ -161,7 +161,7 @@ static void FreeH(void* addr);  /* ******* Use Unref(hash) ******* */
 static void EvalH(Operand* op);
 
 Operations hashOps = {
-  &FreeH, T_OPAQUE, 0, /* promoteID = */T_STRING/* means illegal */,
+  &FreeH, YOR_OPAQUE, 0, /* promoteID = */YOR_STRING/* means illegal */,
   "hash_table",
   {&PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX},
   &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX, &ToAnyX,
@@ -221,7 +221,7 @@ static void EvalH(Operand* op)
     if (s->ops != &dataBlockSym || db == NULL
         || ((oper = db->ops) != &functionOps &&
             oper != &builtinOps && oper != &auto_ops)) {
-      YError("non-function eval method");
+      h_error("non-function eval method");
     }
 
     /* Permute the stack to prepend reference to eval method.  First, make sure the
@@ -265,7 +265,7 @@ static void EvalH(Operand* op)
   if (nargs == 1 && sp->ops != NULL) {
     Operand arg;
     sp->ops->FormOperand(sp, &arg);
-    if (arg.ops->typeID == T_STRING) {
+    if (arg.ops->typeID == YOR_STRING) {
       if (arg.type.dims == NULL) {
         const char* name = *(char**)arg.value;
         h_entry_t* entry = h_find(table, name);
@@ -289,13 +289,13 @@ static void EvalH(Operand* op)
         owner->ops = ops; /* change ops only AFTER value updated */
         return;
       }
-    } else if (arg.ops->typeID == T_VOID) {
+    } else if (arg.ops->typeID == YOR_VOID) {
       Drop(2);
       PushLongValue(table->number);
       return;
     }
   }
-  YError("expecting or a single hash key name or nil (integer indexing no longer supported)");
+  h_error("expecting or a single hash key name or nil (integer indexing no longer supported)");
 }
 
 /*---------------------------------------------------------------------------*/
@@ -318,7 +318,7 @@ static void push_string_value(const char* value)
 
 void Y_is_hash(int nargs)
 {
-  if (nargs != 1) YError("is_hash takes exactly one argument");
+  if (nargs != 1) h_error("is_hash takes exactly one argument");
   int result;
   Symbol* s = YETI_DEREFERENCE_SYMBOL(sp);
   if (s->ops == &dataBlockSym && s->value.db->ops == &hashOps) {
@@ -336,7 +336,7 @@ void Y_is_hash(int nargs)
 void Y_h_debug(int nargs)
 {
   for (int i = 1; i <= nargs; ++i) {
-    yeti_debug_symbol(sp - nargs + i);
+    yor_debug_symbol(sp - nargs + i);
   }
   Drop(nargs);
 }
@@ -364,7 +364,7 @@ void Y_h_new(int nargs)
 void Y_h_set(int nargs)
 {
   if (nargs < 1 || nargs%2 != 1)
-    YError("usage: h_set,table,\"key\",value,... -or- h_set,table,key=value,...");
+    h_error("usage: h_set,table,\"key\",value,... -or- h_set,table,key=value,...");
   h_table_t* table = get_table(sp - nargs + 1);
   if (nargs > 1) {
     set_members(table, sp - nargs + 2, nargs - 1);
@@ -379,7 +379,7 @@ void Y_h_get(int nargs)
   h_table_t* table;
   const char* name;
   if (get_table_and_key(nargs, &table, &name)) {
-    YError("usage: h_get(table, \"key\") -or- h_get(table, key=)");
+    h_error("usage: h_get(table, \"key\") -or- h_get(table, key=)");
   }
   Drop(nargs - 1);             /* only left hash table on top of stack */
   get_member(sp, table, name); /* replace top of stack by entry contents */
@@ -390,7 +390,7 @@ void Y_h_has(int nargs)
   h_table_t* table;
   const char* name;
   if (get_table_and_key(nargs, &table, &name)) {
-    YError("usage: h_has(table, \"key\") -or- h_has(table, key=)");
+    h_error("usage: h_has(table, \"key\") -or- h_has(table, key=)");
   }
   int result = (h_find(table, name) != NULL);
   Drop(nargs);
@@ -403,7 +403,7 @@ void Y_h_pop(int nargs)
   h_table_t* table;
   const char* name;
   if (get_table_and_key(nargs, &table, &name)) {
-    YError("usage: h_pop(table, \"key\") -or- h_pop(table, key=)");
+    h_error("usage: h_pop(table, \"key\") -or- h_pop(table, key=)");
   }
 
   /* Ensure that there are no pending signals before critical operation. */
@@ -447,10 +447,10 @@ void Y_h_pop(int nargs)
 
 void Y_h_number(int nargs)
 {
-  if (nargs != 1) YError("h_number takes exactly one argument");
+  if (nargs != 1) h_error("h_number takes exactly one argument");
   Symbol* s = YETI_DEREFERENCE_SYMBOL(sp);
   if (s->ops != &dataBlockSym || s->value.db->ops != &hashOps) {
-    YError("inexpected non-hash table argument");
+    h_error("inexpected non-hash table argument");
   }
   long result = ((h_table_t*)s->value.db)->number;
   PushLongValue(result);
@@ -458,16 +458,16 @@ void Y_h_number(int nargs)
 
 void Y_h_keys(int nargs)
 {
-  if (nargs != 1) YError("h_keys takes exactly one argument");
+  if (nargs != 1) h_error("h_keys takes exactly one argument");
   h_table_t* table = get_table(sp);
   size_t number = table->number;
   if (number > 0) {
-    char** result = YOR_PUSH_NEW_ARRAY(char*, yeti_start_dimlist(number));
+    char** result = YOR_PUSH_NEW_ARRAY(char*, yor_start_dimlist(number));
     size_t j = 0;
     for (size_t i = 0; i < table->size; ++i) {
       for (h_entry_t* entry = table->bucket[i];
            entry != NULL; entry = entry->next) {
-        if (j >= number) YError("corrupted hash table");
+        if (j >= number) h_error("corrupted hash table");
         result[j++] = p_strcpy(entry->name);
       }
     }
@@ -478,7 +478,7 @@ void Y_h_keys(int nargs)
 
 void Y_h_first(int nargs)
 {
-  if (nargs != 1) YError("h_first takes exactly one argument");
+  if (nargs != 1) h_error("h_first takes exactly one argument");
   h_table_t* table = get_table(sp);
   char* name = NULL;
   h_entry_t** bucket = table->bucket;
@@ -494,17 +494,17 @@ void Y_h_first(int nargs)
 
 void Y_h_next(int nargs)
 {
-  if (nargs != 2) YError("h_next takes exactly two arguments");
+  if (nargs != 2) h_error("h_next takes exactly two arguments");
   h_table_t* table = get_table(sp - 1);
 
   /* Get scalar string argument. */
   if (sp->ops == NULL) {
   bad_arg:
-    YError("expecting a scalar string");
+    h_error("expecting a scalar string");
   }
   Operand arg;
   sp->ops->FormOperand(sp, &arg);
-  if (arg.type.dims != NULL || arg.ops->typeID != T_STRING) {
+  if (arg.type.dims != NULL || arg.ops->typeID != YOR_STRING) {
     goto bad_arg;
   }
   const char* name = *(char**)arg.value;
@@ -541,16 +541,16 @@ void Y_h_next(int nargs)
       return;
     }
   }
-  YError("hash entry not found");
+  h_error("hash entry not found");
 }
 
 void Y_h_stat(int nargs)
 {
-  if (nargs != 1) YError("h_stat takes exactly one argument");
+  if (nargs != 1) h_error("h_stat takes exactly one argument");
   h_table_t* table = get_table(sp);
   size_t number = table->number;
   h_entry_t** bucket = table->bucket;
-  long* result = YOR_PUSH_NEW_ARRAY(long, yeti_start_dimlist(number + 1));
+  long* result = YOR_PUSH_NEW_ARRAY(long, yor_start_dimlist(number + 1));
   for (size_t i = 0; i <= number; ++i) {
     result[i] = 0L;
   }
@@ -572,7 +572,7 @@ void Y_h_stat(int nargs)
   }
   if (sum_count != number) {
     table->number = sum_count;
-    YError("corrupted hash table");
+    h_error("corrupted hash table");
   }
 }
 
@@ -613,7 +613,7 @@ void Y_h_evaluator(int nargs)
     default_eval_index = Globalize("*hash_evaluator*", 0L);
   }
 
-  if (nargs < 1 || nargs > 2) YError("h_evaluator takes 1 or 2 arguments");
+  if (nargs < 1 || nargs > 2) h_error("h_evaluator takes 1 or 2 arguments");
   int push_result =  ! yarg_subroutine();
   h_table_t* table = get_table(sp - nargs + 1);
   long old_index = table->eval;
@@ -662,7 +662,7 @@ void Y_h_evaluator(int nargs)
       }
     }
     if (new_index < 0L) {
-      YError("evaluator must be a function or a valid symbol's name");
+      h_error("evaluator must be a function or a valid symbol's name");
     }
     if (new_index == default_eval_index) {
       table->eval = -1L;
@@ -712,7 +712,7 @@ static int get_table_and_key(int nargs, h_table_t** table,
     if (s->ops) {
       Operand op;
       s->ops->FormOperand(s, &op);
-      if (! op.type.dims && op.ops->typeID == T_STRING) {
+      if (! op.type.dims && op.ops->typeID == YOR_STRING) {
         *table = get_table(stack);
         *keystr = *(char**)op.value;
         return 0;
@@ -733,7 +733,7 @@ static h_table_t* get_table(Symbol* stack)
 {
   Symbol* sym = YETI_DEREFERENCE_SYMBOL(stack);
   if (sym->ops != &dataBlockSym || sym->value.db->ops != &hashOps)
-    YError("expected hash table object");
+    h_error("expected hash table object");
   DataBlock* db = sym->value.db;
   if (sym != stack) {
     /* Replace reference onto the stack (equivalent to the statement
@@ -746,7 +746,7 @@ static h_table_t* get_table(Symbol* stack)
 
 static void set_members(h_table_t* table, Symbol* stack, int nargs)
 {
-  if (nargs%2 != 0) YError("last key has no value");
+  if (nargs%2 != 0) h_error("last key has no value");
   for (int i = 0; i < nargs; i += 2, stack += 2) {
     /* Get key name. */
     const char* name;
@@ -762,7 +762,7 @@ static void set_members(h_table_t* table, Symbol* stack, int nargs)
       name = globalTable.names[stack->index];
     }
     if (! name) {
-      YError("bad key, expecting a non-nil scalar string name or a keyword");
+      h_error("bad key, expecting a non-nil scalar string name or a keyword");
     }
 
     /* Replace value. */

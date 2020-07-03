@@ -16,7 +16,7 @@
 
 #include <stdlib.h>
 #include <math.h>
-#include <ydata.h>
+#include "yeti.h"
 
 extern BuiltIn Y_cost_l2;
 extern BuiltIn Y_cost_l2l1;
@@ -50,93 +50,90 @@ void Y_cost_l2l0(int argc)
 static void cost_wrapper(int argc, const char* name,
                          cost_worker_t* worker)
 {
-  const double ZERO = 0.0;
-  double result, mu, tpos, tneg, hyper[3];
-  Operand op;
-  size_t number;
-  const double* x;
-  double* g ;
-  Symbol* s;
-  long index;
-  int choice, temporary;
 
-  if (argc < 2 || argc > 3) YError("expecting 2 or 3 arguments");
+  if (argc < 2 || argc > 3) yor_error("expecting 2 or 3 arguments");
 
   /* Get the hyper-parameters. */
-  s = sp - argc + 1;
+  Symbol* s = sp - argc + 1;
+  Operand op;
+  size_t number;
+  const double *hyp;
   if (s->ops && s->ops->FormOperand(s, &op)->ops->isArray) {
     number = op.type.number;
     if (number < 1 || number > 3) {
-      YError("expecting 1, 2 or 3 hyper-parameters");
+      yor_error("expecting 1, 2 or 3 hyper-parameters");
       return;
     }
     switch (op.ops->typeID) {
-    case T_CHAR:
-    case T_SHORT:
-    case T_INT:
-    case T_LONG:
-    case T_FLOAT:
+    case YOR_CHAR:
+    case YOR_SHORT:
+    case YOR_INT:
+    case YOR_LONG:
+    case YOR_FLOAT:
       op.ops->ToDouble(&op);
-    case T_DOUBLE:
-      x = (const double*)op.value;
+    case YOR_DOUBLE:
+      hyp = (const double*)op.value;
       break;
     default:
-      YError("bad data type for the hyper-parameters");
+      yor_error("bad data type for the hyper-parameters");
       return;
     }
   } else {
-    YError("hyper-parameters must be an array");
+    yor_error("hyper-parameters must be an array");
     return;
   }
+  double mu, tpos, tneg;
   if (number == 1) {
-    mu = x[0];
-    tneg = ZERO;
-    tpos = ZERO;
+    mu = hyp[0];
+    tneg = 0.0;
+    tpos = 0.0;
   } else if (number == 2) {
-    mu = x[0];
-    tneg = -x[1];
-    tpos = +x[1];
+    mu = hyp[0];
+    tneg = -hyp[1];
+    tpos = +hyp[1];
   } else {
-    mu = x[0];
-    tneg = x[1];
-    tpos = x[2];
+    mu = hyp[0];
+    tneg = hyp[1];
+    tpos = hyp[2];
   }
-  choice = 0;
-  if (tneg < ZERO) choice |= 1;
-  else if (tneg != ZERO) YError("lower threshold must be negative");
-  if (tpos > ZERO) choice |= 2;
-  else if (tpos != ZERO) YError("upper threshold must be positive");
+  int choice = 0;
+  if (tneg < 0.0) choice |= 1;
+  else if (tneg != 0.0) yor_error("lower threshold must be negative");
+  if (tpos > 0.0) choice |= 2;
+  else if (tpos != 0.0) yor_error("upper threshold must be positive");
 
   /* Get the parameters. */
   ++s;
-  x = (double*)0;
-  temporary = 0;
+  const double* x = (double*)0;
+  int temporary = 0;
   if (s->ops && s->ops->FormOperand(s, &op)->ops->isArray) {
     switch (op.ops->typeID) {
-    case T_CHAR:
-    case T_SHORT:
-    case T_INT:
-    case T_LONG:
-    case T_FLOAT:
+    case YOR_CHAR:
+    case YOR_SHORT:
+    case YOR_INT:
+    case YOR_LONG:
+    case YOR_FLOAT:
       op.ops->ToDouble(&op);
-    case T_DOUBLE:
+    case YOR_DOUBLE:
       x = (const double*)op.value;
       temporary = (! op.references);
       number = op.type.number;
     }
   }
-  if (! x) {
-    YError("invalid input array");
+  if (x == NULL) {
+    yor_error("invalid input array");
     return;
   }
 
+  /* Get the symbol for the gradient.  If gradient is required and input
+     array X is a temporary one, re-use X as the output gradient; otherwise,
+     create a new array from scratch for G (see BuildResultU in ops0.c). */
+  long index = -1L;
+  double* g = NULL;
   if (argc == 3) {
-    /* Get the symbol for the gradient.  If gradient is required and input
-       array X is a temporary one, re-use X as the output gradient; otherwise,
-       create a new array from scratch for G (see BuildResultU in ops0.c). */
     ++s;
     if (s->ops!=&referenceSym)
-      YError("needs simple variable reference to store the gradient");
+      yor_error("needs simple variable reference to store the gradient");
     index = s->index;
     Drop(1);
     if (temporary) {
@@ -145,17 +142,12 @@ static void cost_wrapper(int argc, const char* name,
       g = ((Array*)PushDataBlock(NewArray(&doubleStruct,
                                           op.type.dims)))->value.d;
     }
-  } else {
-    index = -1L;
-    g = (double*)0;
   }
 
-  hyper[0] = mu;
-  hyper[1] = tneg;
-  hyper[2] = tpos;
-  result = worker(hyper, x, g, number, choice);
+  double hyper[3] = {mu, tneg, tpos};
+  double result = worker(hyper, x, g, number, choice);
   if (index >= 0L) PopTo(&globTab[index]);
-  PushDoubleValue(result);
+  yor_push_value(result);
 }
 
 static double cost_l2(const double hyper[],

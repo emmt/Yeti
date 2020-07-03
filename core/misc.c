@@ -26,15 +26,6 @@
 #include "config.h"
 #include "yeti.h"
 
-#if defined(__GNUC__) && __GNUC__ > 1
-static void unexpected_keyword_argument() __attribute__ ((noreturn));
-#endif
-
-static void unexpected_keyword_argument()
-{
-  YError("unexpected keyword argument");
-}
-
 /* Shall we use faster complex division? (depends Yorick version) */
 #if (YORICK_VERSION_MAJOR >= 2)
 # define USE_FASTER_DIVIDE_Z 0
@@ -112,7 +103,7 @@ void Y_yeti_init(int argc)
   globalize_long("YETI_VERSION_MICRO", YETI_VERSION_MICRO);
   globalize_string("YETI_VERSION_SUFFIX", YETI_VERSION_SUFFIX);
   if (! CalledAsSubroutine()) {
-    yeti_push_string_value(version);
+    yor_push_string_value(version);
   }
 }
 
@@ -147,7 +138,7 @@ static void fast_DivideZ(Operand* l, Operand* r)
 {
   const double one = 1.0;
   double* dst = BuildResult2(l, r);
-  if (dst == NULL) YError("operands not conformable in binary /");
+  if (dst == NULL) yor_error("operands not conformable in binary /");
   size_t n = l->type.number;
   const double* lv = l->value;
   const double* rv = r->value;
@@ -157,7 +148,8 @@ static void fast_DivideZ(Operand* l, Operand* r)
     double li = lv[2*i+1];
     double rr = rv[2*i];
     double ri = rv[2*i+1];
-    if ((rr > 0 ? rr : -rr) > (ri > 0 ? ri : -ri)) { /* be careful about overflow... */
+    if ((rr > 0 ? rr : -rr) > (ri > 0 ? ri : -ri)) { /* be careful about
+                                                        overflow... */
       ri /= rr;
       rr = one/((one + ri*ri)*rr);
       dst[2*i] = (lr + li*ri)*rr;
@@ -183,7 +175,7 @@ static Operand* form_operand_db(Symbol* owner, Operand* op);
 
 void Y_mem_base(int argc)
 {
-  if (argc != 1) YError("mem_base takes exactly 1 argument");
+  if (argc != 1) yor_error("mem_base takes exactly 1 argument");
 
   /*** based on Address() in ops3.c ***/
 
@@ -194,7 +186,7 @@ void Y_mem_base(int argc)
      address of a scalar is taken, the efficient representation is lost.  */
   if (sp->ops != &referenceSym) {
   bad_arg:
-    YError("expected a reference to an array object");
+    yor_error("expected a reference to an array object");
   }
   Array* array;
   Symbol* s = &globTab[sp->index];
@@ -227,7 +219,7 @@ void Y_mem_base(int argc)
 
 void Y_mem_copy(int argc)
 {
-  if (argc != 2) YError("mem_copy takes exactly 2 arguments");
+  if (argc != 2) yor_error("mem_copy takes exactly 2 arguments");
   void* address = get_address(sp - 1);
   Symbol* s = (sp->ops == &referenceSym) ? &globTab[sp->index] : sp;
   if (s->ops == &doubleScalar) {
@@ -241,22 +233,22 @@ void Y_mem_copy(int argc)
     (void)memcpy(address, array->value.c,
                  array->type.number*array->type.base->size);
   } else {
-    YError("unexpected non-array data");
+    yor_error("unexpected non-array data");
   }
 }
 
 void Y_mem_peek(int argc)
 {
-  if (argc < 2) YError("mem_peek takes at least 2 arguments");
+  if (argc < 2) yor_error("mem_peek takes at least 2 arguments");
   Symbol* stack = sp - argc + 1;
   void* address = get_address(stack);
   Symbol* s = stack + 1;
   if (s->ops == &referenceSym) s = &globTab[s->index];
   if (s->ops != &dataBlockSym || s->value.db->ops != &structDefOps)
-    YError("expected type definition as second argument");
+    yor_error("expected type definition as second argument");
   StructDef* base = (StructDef*)s->value.db;
-  if (base->dataOps->typeID < T_CHAR || base->dataOps->typeID > T_COMPLEX)
-    YError("only basic data types are supported");
+  if (base->dataOps->typeID < YOR_CHAR || base->dataOps->typeID > YOR_COMPLEX)
+    yor_error("only basic data types are supported");
   build_dimlist(stack + 2, argc - 2);
   Array* array = PushDataBlock(NewArray(base, tmpDims));
   memcpy(array->value.c, address, array->type.number*array->type.base->size);
@@ -264,14 +256,14 @@ void Y_mem_peek(int argc)
 
 static void* get_address(Symbol* s)
 {
-  if (s->ops == NULL) unexpected_keyword_argument();
+  if (s->ops == NULL) yor_unexpected_keyword_argument();
   Operand op;
   s->ops->FormOperand(s, &op);
   if (op.type.dims == (Dimension*)0) {
-    if (op.ops->typeID == T_LONG) return (void*)*(long*)op.value;
-    if (op.ops->typeID == T_POINTER) return (void*)*(void**)op.value;
+    if (op.ops->typeID == YOR_LONG) return (void*)*(long*)op.value;
+    if (op.ops->typeID == YOR_POINTER) return (void*)*(void**)op.value;
   }
-  YError("bad address (expecting long integer or pointer scalar)");
+  yor_error("bad address (expecting long integer or pointer scalar)");
   return (void*)0; /* avoid compiler warning */
 }
 
@@ -298,12 +290,12 @@ static void build_dimlist(Symbol* stack, int nArgs)
         Range* range= op.value;
         long len;
         if (range->rf || range->nilFlags || range->inc!=1)
-          YError("only min:max ranges allowed in dimension list");
+          yor_error("only min:max ranges allowed in dimension list");
         len= range->max-range->min+1;
         if (len<=0) goto badl;
         tmpDims= NewDimension(len, range->min, tmpDims);
 
-      } else if (op.ops->promoteID<=T_LONG &&
+      } else if (op.ops->promoteID<=YOR_LONG &&
                  (!op.type.dims || !op.type.dims->next)) {
         long len;
         op.ops->ToLong(&op);
@@ -315,7 +307,7 @@ static void build_dimlist(Symbol* stack, int nArgs)
           long* dim= op.value;
           long n= *dim++;
           if (n>10 || n>=op.type.number)
-            YError("dimension list format [#dims, len1, len2, ...]");
+            yor_error("dimension list format [#dims, len1, len2, ...]");
           while (n--) {
             len= *dim++;
             if (len<=0) goto badl;
@@ -328,7 +320,7 @@ static void build_dimlist(Symbol* stack, int nArgs)
       }
     } else {
     badl:
-      YError("bad dimension list");
+      yor_error("bad dimension list");
     }
     stack++;
   }
@@ -425,10 +417,10 @@ void Y_get_encoding(int argc)
                 P_FLOAT_LAYOUT, P_DOUBLE_LAYOUT}}
   };
   const int ndb = sizeof(db)/sizeof(db[0]);
-  if (argc != 1) YError("get_encoding takes exactly one argument");
-  const char* name = YGetString(sp);
+  if (argc != 1) yor_error("get_encoding takes exactly one argument");
+  const char* name = yor_get_string(sp);
   if (name != NULL) {
-    long* result = YOR_PUSH_NEW_ARRAY(long, yeti_start_dimlist(32));
+    long* result = YOR_PUSH_NEW_ARRAY(long, yor_start_dimlist(32));
     int c = name[0];
     for (int i = 0; i < ndb; ++i) {
       if (db[i].name[0] == c && strcmp(db[i].name, name) == 0) {
@@ -440,7 +432,7 @@ void Y_get_encoding(int argc)
       }
     }
   }
-  YError("unknown encoding name");
+  yor_error("unknown encoding name");
 }
 
 /*---------------------------------------------------------------------------*/
@@ -448,99 +440,82 @@ void Y_get_encoding(int argc)
 
 void Y_machine_constant(int argc)
 {
-  if (argc!=1) YError("machine_constant: takes exactly one argument");
-  const char* name = YGetString(sp);
-  double dval;
-  float fval;
-  long lval;
+  if (argc != 1) yor_error("machine_constant: takes exactly one argument");
+  const char* name = yor_get_string(sp);
+
+#define C(T, P, S) do {                         \
+    if (strcmp(#S, name + 4) == 0) {            \
+      yor_push_##T##_value((T)P##_##S);         \
+      return;                                   \
+    }                                           \
+  } while (0)
+
   if (name != NULL && name[0] == 'D' && name[1] == 'B' && name[2] == 'L'
       && name[3] == '_') {
-#define _(S,V) do {                             \
-    if (strcmp(#S, name + 4) == 0) {            \
-      V = DBL_##S;                              \
-      goto push_##V;                            \
-    }                                           \
-  } while (0)
 #if defined(DBL_EPSILON)
-    _(EPSILON, dval);
+    C(double, DBL, EPSILON);
 #endif
 #if defined(DBL_MIN)
-    _(MIN, dval);
+    C(double, DBL, MIN);
 #endif
 #if defined(DBL_MAX)
-    _(MAX, dval);
+    C(double, DBL, MAX);
 #endif
 #if defined(DBL_MIN_EXP)
-    _(MIN_EXP, lval);
+    C(long, DBL, MIN_EXP);
 #endif
 #if defined(DBL_MAX_EXP)
-    _(MAX_EXP, lval);
+    C(long, DBL, MAX_EXP);
 #endif
 #if defined(DBL_MIN_10_EXP)
-    _(MIN_10_EXP, lval);
+    C(long, DBL, MIN_10_EXP);
 #endif
 #if defined(DBL_MAX_10_EXP)
-    _(MAX_10_EXP, lval);
+    C(long, DBL, MAX_10_EXP);
 #endif
 #if defined(DBL_MANT_DIG)
-    _(MANT_DIG, lval);
+    C(long, DBL, MANT_DIG);
 #endif
 #if defined(DBL_DIG)
-    _(DIG, lval);
+    C(long, DBL, DIG);
 #endif
-#undef _
-  } else if (name != NULL && name[0] == 'F' && name[1] == 'L' && name[2] == 'T'
-             && name[3] == '_') {
-#define _(S,V) do {                             \
-    if (strcmp(#S, name + 4) == 0) {            \
-      V = FLT_##S;                              \
-      goto push_##V;                            \
-    }                                           \
-  } while (0)
+  }
+  if (name != NULL && name[0] == 'F' && name[1] == 'L' && name[2] == 'T'
+      && name[3] == '_') {
 #if defined(FLT_EPSILON)
-    _(EPSILON, fval);
+    C(float, FLT, EPSILON);
 #endif
 #if defined(FLT_MIN)
-    _(MIN, fval);
+    C(float, FLT, MIN);
 #endif
 #if defined(FLT_MAX)
-    _(MAX, fval);
+    C(float, FLT, MAX);
 #endif
 #if defined(FLT_MIN_EXP)
-    _(MIN_EXP, lval);
+    C(long, FLT, MIN_EXP);
 #endif
 #if defined(FLT_MAX_EXP)
-    _(MAX_EXP, lval);
+    C(long, FLT, MAX_EXP);
 #endif
 #if defined(FLT_MIN_10_EXP)
-    _(MIN_10_EXP, lval);
+    C(long, FLT, MIN_10_EXP);
 #endif
 #if defined(FLT_MAX_10_EXP)
-    _(MAX_10_EXP, lval);
+    C(long, FLT, MAX_10_EXP);
 #endif
 #if defined(FLT_RADIX)
-    _(RADIX, lval);
+    C(long, FLT, RADIX);
 #endif
 #if defined(FLT_MANT_DIG)
-    _(MANT_DIG, lval);
+    C(long, FLT, MANT_DIG);
 #endif
 #if defined(FLT_DIG)
-    _(DIG, lval);
+    C(long, FLT, DIG);
 #endif
-#undef _
   }
-  YError("unknown name of machine constant");
-  return;
+#undef C
 
- push_dval:
-  yor_push_double_value(dval);
-  return;
- push_fval:
-  yor_push_float_value(fval);
-  return;
- push_lval:
-  yor_push_long_value(lval);
-  return;
+  yor_error("unknown name of machine constant");
 }
 
 /*---------------------------------------------------------------------------*/
@@ -548,8 +523,8 @@ void Y_machine_constant(int argc)
 
 void Y_nrefsof(int argc)
 {
-  if (argc != 1) YError("nrefsof takes exactly one argument");
-  if (! sp->ops) YError("unexpected keyword argument");
+  if (argc != 1) yor_error("nrefsof takes exactly one argument");
+  if (sp->ops == NULL) yor_unexpected_keyword_argument();
   Operand op;
   PushLongValue(sp->ops->FormOperand(sp, &op)->references);
 }
@@ -557,12 +532,12 @@ void Y_nrefsof(int argc)
 void Y_insure_temporary(int argc)
 {
   if (argc < 1 || ! CalledAsSubroutine()) {
-    YError("insure_temporary must be called as a subroutine");
+    yor_error("insure_temporary must be called as a subroutine");
   }
   for (int i = 1 - argc; i <= 0; ++i) {
     Symbol* stack = sp + i;
     if (stack->ops != &referenceSym) {
-      YError("insure_temporary expects variable reference(s)");
+      yor_error("insure_temporary expects variable reference(s)");
     }
     Symbol* glob = &globTab[stack->index];
     OpTable* ops = glob->ops;
@@ -615,7 +590,7 @@ void Y_smooth3(int argc)
       if (++nparsed == 1) {
         stack->ops->FormOperand(stack, &op);
       } else {
-        YError("too many arguments");
+        yor_error("too many arguments");
         return;
       }
     } else {
@@ -624,39 +599,39 @@ void Y_smooth3(int argc)
       ++stack;
       if (keyword[0] == 'c' && keyword[1] == 0) {
         if (YNotNil(stack)) {
-          p50 = YGetReal(stack);
+          p50 = yor_get_real(stack);
           p25 = 0.5*(1.0 - p50);
           p75 = 0.5*(1.0 + p50);
         }
       } else if (keyword[0] == 'w' && strcmp(keyword, "which") == 0) {
         if (YNotNil(stack)) {
-          which = YGetInteger(stack);
+          which = yor_get_integer(stack);
           single = 1;
         }
       } else {
-        YError("unknown keyword");
+        yor_error("unknown keyword");
         return;
       }
     }
   }
   if (nparsed != 1) {
-    YError("bad number of arguments");
+    yor_error("bad number of arguments");
     return;
   }
 
   /* Get input array. */
   int type = op.ops->typeID;
-  int is_complex = (type == T_COMPLEX);
+  int is_complex = (type == YOR_COMPLEX);
   long ntot = (is_complex ? 2*op.type.number : op.type.number);
   double* x = NULL;
   Symbol* stack = op.owner;
   Dimension* dims;
-  if (type <= T_FLOAT) {
+  if (type <= YOR_FLOAT) {
     /* Convert input in a new array of double's. */
     op.ops->ToDouble(&op);
     x = op.value;
     dims = op.type.dims;
-  } else if (type == T_DOUBLE || type == T_COMPLEX) {
+  } else if (type == YOR_DOUBLE || type == YOR_COMPLEX) {
     /* If input array has references (is not temporary), make a new copy. */
     if (op.references) {
       Array* array = NewArray((is_complex ? &complexStruct : &doubleStruct),
@@ -671,7 +646,7 @@ void Y_smooth3(int argc)
       dims = op.type.dims;
     }
   } else {
-    YError("bad data type for input array");
+    yor_error("bad data type for input array");
     return;
   }
   while (sp > stack) {
@@ -693,7 +668,7 @@ void Y_smooth3(int argc)
       which += rank;
     }
     if (which < 1 || which > rank) {
-      YError("WHICH is out of range");
+      yor_error("WHICH is out of range");
     }
     while (dims != NULL) {
       long n2 = dims->number;
@@ -785,8 +760,8 @@ static void smooth_single(double* x, double p25, double p50, double p75,
 
 void Y_product(int argc)
 {
-  if (argc != 1) YError("prod() takes exactly one argument");
-  if (! sp->ops) YError("unexpected keyword argument");
+  if (argc != 1) yor_error("prod() takes exactly one argument");
+  if (sp->ops == NULL) yor_unexpected_keyword_argument();
   Operand op;
   sp->ops->FormOperand(sp, &op);
   switch (op.ops->typeID) {

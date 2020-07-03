@@ -94,26 +94,26 @@ static void apply_unary_math_func(int argc,
                                   math_func_d* func_d,
                                   math_func_z* func_z)
 {
-  if (argc != 1) YError("expecting exactly one argument");
-  if (sp->ops == NULL) YError("unexpected keyword");
+  if (argc != 1) yor_error("expecting exactly one argument");
+  if (sp->ops == NULL) yor_unexpected_keyword_argument();
   Operand op;
   sp->ops->FormOperand(sp, &op);
   int type = op.ops->typeID;
-  if (type == T_FLOAT && func_f != NULL) {
+  if (type == YOR_FLOAT && func_f != NULL) {
     func_d(build_result(&op, &floatStruct), op.value, op.type.number);
     PopTo(sp - 2);
-  } else if (type <= T_DOUBLE && func_d != NULL) {
-    if (type < T_DOUBLE) {
+  } else if (type <= YOR_DOUBLE && func_d != NULL) {
+    if (type < YOR_DOUBLE) {
       op.ops->ToDouble(&op);
       type = op.ops->typeID;
     }
     func_d(build_result(&op, &doubleStruct), op.value, op.type.number);
     pop_to_d(sp - 2);
-  } else if (type == T_COMPLEX && func_z != NULL) {
+  } else if (type == YOR_COMPLEX && func_z != NULL) {
     func_z(build_result(&op, &complexStruct), op.value, op.type.number);
     PopTo(sp - 2);
   } else {
-    YError("unexpected type of argument");
+    yor_error("unexpected type of argument");
   }
   Drop(1);
 }

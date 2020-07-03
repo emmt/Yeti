@@ -31,105 +31,105 @@
 #define index_t long
 
 #define value_t unsigned char
-#define HEAPSORT    _yeti_heapsort_c
-#define HEAPSORT1   _yeti_heapsort1_c
-#define QUICKSELECT _yeti_quick_select_c
+#define HEAPSORT    heapsort_c
+#define HEAPSORT1   heapsort1_c
+#define QUICKSELECT quick_select_c
 #include __FILE__
 
 #define value_t short
-#define HEAPSORT    _yeti_heapsort_s
-#define HEAPSORT1   _yeti_heapsort1_s
-#define QUICKSELECT _yeti_quick_select_s
+#define HEAPSORT    heapsort_s
+#define HEAPSORT1   heapsort1_s
+#define QUICKSELECT quick_select_s
 #include __FILE__
 
 #define value_t int
-#define HEAPSORT    _yeti_heapsort_i
-#define HEAPSORT1   _yeti_heapsort1_i
-#define QUICKSELECT _yeti_quick_select_i
+#define HEAPSORT    heapsort_i
+#define HEAPSORT1   heapsort1_i
+#define QUICKSELECT quick_select_i
 #include __FILE__
 
 #define value_t long
-#define HEAPSORT    _yeti_heapsort_l
-#define HEAPSORT1   _yeti_heapsort1_l
-#define QUICKSELECT _yeti_quick_select_l
+#define HEAPSORT    heapsort_l
+#define HEAPSORT1   heapsort1_l
+#define QUICKSELECT quick_select_l
 #include __FILE__
 
 #define value_t float
-#define HEAPSORT    _yeti_heapsort_f
-#define HEAPSORT1   _yeti_heapsort1_f
-#define QUICKSELECT _yeti_quick_select_f
+#define HEAPSORT    heapsort_f
+#define HEAPSORT1   heapsort1_f
+#define QUICKSELECT quick_select_f
 #include __FILE__
 
 #define value_t double
-#define HEAPSORT    _yeti_heapsort_d
-#define HEAPSORT1   _yeti_heapsort1_d
-#define QUICKSELECT _yeti_quick_select_d
+#define HEAPSORT    heapsort_d
+#define HEAPSORT1   heapsort1_d
+#define QUICKSELECT quick_select_d
 #include __FILE__
 
 extern BuiltIn Y_heapsort;
 
 void Y_heapsort(int argc)
 {
-  if (argc != 1) YError("heapsort takes exactly one argument");
-  if (! sp->ops) YError("unexpected keyword");
+  if (argc != 1) yor_error("heapsort takes exactly one argument");
+  if (sp->ops == NULL) yor_unexpected_keyword_argument();
   Operand op;
   sp->ops->FormOperand(sp, &op);
   index_t number = op.type.number;
   if (CalledAsSubroutine()) {
     switch (op.ops->typeID) {
-    case T_CHAR:
-      _yeti_heapsort_c(op.value, number);
+    case YOR_CHAR:
+      heapsort_c(op.value, number);
       return;
-    case T_SHORT:
-      _yeti_heapsort_s(op.value, number);
+    case YOR_SHORT:
+      heapsort_s(op.value, number);
       return;
-    case T_INT:
-      _yeti_heapsort_i(op.value, number);
+    case YOR_INT:
+      heapsort_i(op.value, number);
       return;
-    case T_LONG:
-      _yeti_heapsort_l(op.value, number);
+    case YOR_LONG:
+      heapsort_l(op.value, number);
       return;
-    case T_FLOAT:
-      _yeti_heapsort_f(op.value, number);
+    case YOR_FLOAT:
+      heapsort_f(op.value, number);
       return;
-    case T_DOUBLE:
-      _yeti_heapsort_d(op.value, number);
+    case YOR_DOUBLE:
+      heapsort_d(op.value, number);
       return;
     }
   } else {
     index_t* index;
     switch (op.ops->typeID) {
-    case T_CHAR:
-    case T_SHORT:
-    case T_INT:
-    case T_LONG:
-    case T_FLOAT:
-    case T_DOUBLE:
-      index = YOR_PUSH_NEW_ARRAY(index_t, yeti_start_dimlist(number));
+    case YOR_CHAR:
+    case YOR_SHORT:
+    case YOR_INT:
+    case YOR_LONG:
+    case YOR_FLOAT:
+    case YOR_DOUBLE:
+      index = YOR_PUSH_NEW_ARRAY(index_t, yor_start_dimlist(number));
       switch (op.ops->typeID) {
-      case T_CHAR:
-        _yeti_heapsort1_c(index, op.value, number);
+      case YOR_CHAR:
+        heapsort1_c(index, op.value, number);
         break;
-      case T_SHORT:
-        _yeti_heapsort1_s(index, op.value, number);
+      case YOR_SHORT:
+        heapsort1_s(index, op.value, number);
         break;
-      case T_INT:
-        _yeti_heapsort1_i(index, op.value, number);
+      case YOR_INT:
+        heapsort1_i(index, op.value, number);
         break;
-      case T_LONG:
-        _yeti_heapsort1_l(index, op.value, number);
+      case YOR_LONG:
+        heapsort1_l(index, op.value, number);
         break;
-      case T_FLOAT:
-        _yeti_heapsort1_f(index, op.value, number);
+      case YOR_FLOAT:
+        heapsort1_f(index, op.value, number);
         break;
       default:
-        _yeti_heapsort1_d(index, op.value, number);
+        heapsort1_d(index, op.value, number);
         break;
       }
       return;
     }
   }
-  YError("bad data type");
+  yor_error("bad data type");
 }
 
 extern BuiltIn Y_quick_select;
@@ -143,45 +143,45 @@ void Y_quick_select(int argc)
   int in_place, type;
 
   if (argc < 2 || argc > 4) {
-    YError("quick_select takes 2 to 4 arguments");
+    yor_error("quick_select takes 2 to 4 arguments");
   }
   s = &sp[1 - argc];
   if (argc >= 4) {
-    last = yeti_get_optional_integer(s + 3, 0);
+    last = yor_get_optional_integer(s + 3, 0);
   } else {
     last = 0;
   }
   if (argc >= 3) {
-    first = yeti_get_optional_integer(s + 2, 1);
+    first = yor_get_optional_integer(s + 2, 1);
   } else {
     first = 1;
   }
-  k = YGetInteger(s + 1);
+  k = yor_get_integer(s + 1);
 
-  if (! s->ops) YError("unexpected keyword");
+  if (s->ops == NULL) yor_unexpected_keyword_argument();
   s->ops->FormOperand(s, &op);
   number = op.type.number;
   type = op.ops->typeID;
   elsize = op.type.base->size;
   switch (type) {
-  case T_CHAR:
-  case T_SHORT:
-  case T_INT:
-  case T_LONG:
-  case T_FLOAT:
-  case T_DOUBLE:
+  case YOR_CHAR:
+  case YOR_SHORT:
+  case YOR_INT:
+  case YOR_LONG:
+  case YOR_FLOAT:
+  case YOR_DOUBLE:
     if (k <= 0) k += number;
-    if (k <= 0 || k > number) YError("out of range index K");
+    if (k <= 0 || k > number) yor_error("out of range index K");
     if (first <= 0) first += number;
-    if (first <= 0 || first > number) YError("out of range index FIRST");
+    if (first <= 0 || first > number) yor_error("out of range index FIRST");
     if (last <= 0) last += number;
-    if (last <= 0 || last > number) YError("out of range index LAST");
+    if (last <= 0 || last > number) yor_error("out of range index LAST");
     if (last < first || k < first || k > last) {
-      YError("selected index range is empty");
+      yor_error("selected index range is empty");
     }
     break;
   default:
-    YError("bad data type");
+    yor_error("bad data type");
   }
   in_place = CalledAsSubroutine();
   if (in_place) {
@@ -204,40 +204,40 @@ void Y_quick_select(int argc)
 
 
   switch (type) {
-  case T_CHAR:
-    _yeti_quick_select_c(k, number, (unsigned char*)ptr);
+  case YOR_CHAR:
+    quick_select_c(k, number, (unsigned char*)ptr);
     if (! in_place) {
-      yeti_push_char_value(((unsigned char*)ptr)[k]);
+      yor_push_char_value(((unsigned char*)ptr)[k]);
     }
     break;
-  case T_SHORT:
-    _yeti_quick_select_s(k, number, (short*)ptr);
+  case YOR_SHORT:
+    quick_select_s(k, number, (short*)ptr);
     if (! in_place) {
-      yeti_push_short_value(((short*)ptr)[k]);
+      yor_push_short_value(((short*)ptr)[k]);
     }
     break;
-  case T_INT:
-    _yeti_quick_select_i(k, number, (int*)ptr);
+  case YOR_INT:
+    quick_select_i(k, number, (int*)ptr);
     if (! in_place) {
-      yeti_push_int_value(((int*)ptr)[k]);
+      yor_push_int_value(((int*)ptr)[k]);
     }
     break;
-  case T_LONG:
-    _yeti_quick_select_l(k, number, (long*)ptr);
+  case YOR_LONG:
+    quick_select_l(k, number, (long*)ptr);
     if (! in_place) {
-      yeti_push_long_value(((long*)ptr)[k]);
+      yor_push_long_value(((long*)ptr)[k]);
     }
     break;
-  case T_FLOAT:
-    _yeti_quick_select_f(k, number, (float*)ptr);
+  case YOR_FLOAT:
+    quick_select_f(k, number, (float*)ptr);
     if (! in_place) {
-      yeti_push_float_value(((float*)ptr)[k]);
+      yor_push_float_value(((float*)ptr)[k]);
     }
     break;
-  case T_DOUBLE:
-    _yeti_quick_select_d(k, number, (double*)ptr);
+  case YOR_DOUBLE:
+    quick_select_d(k, number, (double*)ptr);
     if (! in_place) {
-      yeti_push_double_value(((double*)ptr)[k]);
+      yor_push_double_value(((double*)ptr)[k]);
     }
     break;
   }

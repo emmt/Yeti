@@ -1,66 +1,4 @@
-
-local _test_result;
-local test_npassed;
-local test_nfailed;
-func test_summary(nil)
-{
-    if (is_void(test_npassed)) test_npassed = 0;
-    if (is_void(test_nfailed)) test_nfailed = 0;
-    write, format="\nNumber of successful test(s) ---> %5d\n", test_npassed;
-    write, format="Number of failures(s) ----------> %5d\n", test_nfailed;
-}
-
-func test_eval(expr)
-{
-    extern _test_result;
-    if (is_void(test_npassed)) test_npassed = 0;
-    if (is_void(test_nfailed)) test_nfailed = 0;
-    include, ["_test_result = ("+expr+");"], 1;
-    if (_test_result) {
-        ++test_npassed;
-    } else {
-        ++test_nfailed;
-        write, format="TEST FAILED: %s\n", expr;
-    }
-}
-errs2caller, test_eval;
-
-func test_assert(expr, a0,a1,a2,a3,a4,a5,a6,a7,a8,a9)
-{
-    extern _test_result;
-    if (is_void(test_npassed)) test_npassed = 0;
-    if (is_void(test_nfailed)) test_nfailed = 0;
-    if (expr) {
-        ++test_npassed;
-    } else {
-        ++test_nfailed;
-        if (is_void(a1)) {
-            write, format="ASSERTION FAILED: %s\n", a0;
-        } else {
-            f =  "ASSERTION FAILED: " + a0 + "\n";
-            if (is_void(a2)) {
-                write, format=f, a1;
-            } else if (is_void(a3)) {
-                write, format=f, a1, a2;
-            } else if (is_void(a4)) {
-                write, format=f, a1, a2, a3;
-            } else if (is_void(a5)) {
-                write, format=f, a1, a2, a3, a4;
-            } else if (is_void(a6)) {
-                write, format=f, a1, a2, a3, a4, a5;
-            } else if (is_void(a7)) {
-                write, format=f, a1, a2, a3, a4, a5, a6;
-            } else if (is_void(a8)) {
-                write, format=f, a1, a2, a3, a4, a5, a6, a7;
-            } else if (is_void(a9)) {
-                write, format=f, a1, a2, a3, a4, a5, a6, a7, a8;
-            } else {
-                write, format=f, a1, a2, a3, a4, a5, a6, a7, a8, a9;
-            }
-        }
-    }
-}
-errs2caller, test_assert;
+require, "yeti-testing.i";
 
 func test_quick_quartile(arg, verb=)
 {
@@ -205,6 +143,29 @@ func test_types(nil)
     test_eval, "!is_string(*_test_vp(1))";
     test_eval, "!is_string(*_test_vp(2))";
     test_eval, "is_string(*_test_vp(3))";
+
+    extern _test_eps, _test_min, _test_max;
+    for (i = 1; i <= 2; ++i) {
+        T = (i == 1 ? float : double);
+        p = (i == 1 ? "FLT_" : "DBL_");
+        n = nameof(T);
+        test_eval, "structof(machine_constant(\""+p+"EPSILON\")) == "+n;
+        test_eval, "structof(machine_constant(\""+p+"MIN\")) == "+n;
+        test_eval, "structof(machine_constant(\""+p+"MAX\")) == "+n;
+        test_eval, "structof(machine_constant(\""+p+"MIN_10_EXP\")) == long";
+        test_eval, "structof(machine_constant(\""+p+"MAX_10_EXP\")) == long";
+        test_eval, "structof(machine_constant(\""+p+"MANT_DIG\")) == long";
+        test_eval, "structof(machine_constant(\""+p+"DIG\")) == long";
+        _test_eps = machine_constant(p+"EPSILON");
+        _test_min = machine_constant(p+"MIN");
+        _test_max = machine_constant(p+"MIN");
+        test_eval, "1 + _test_eps > 1";
+        test_eval, "1 - _test_eps < 1";
+        test_eval, "1 + _test_eps/2 == 1";
+        test_eval, "1 - _test_eps/4 == 1";
+        test_eval, "_test_min*(1 - _test_eps) == 0";
+        //test_eval, "_eps_max*(1 + _test_eps) == +Inf";
+    }
 
     TYPE_MIN = [(char(-1) > 0 ?   0 : -128), -32768, -2147483648, -9223372036854775808];
     TYPE_MAX = [(char(-1) > 0 ? 255 :  127),  32767,  2147483647,  9223372036854775807];
