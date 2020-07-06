@@ -449,7 +449,14 @@ extern tuple;
      Tuples may be used to get around the limitation that Yorick functions can
      only return a single value.
 
-   SEE ALSO _lst.
+   SEE ALSO is_tuple, _lst.
+*/
+
+extern is_tuple;
+/* DOCUMENT is_tuple(obj)
+     Yield whethet object OBJ is a tuple.
+
+   SEE ALSO tuple.
 */
 
 /*---------------------------------------------------------------------------*/

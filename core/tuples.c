@@ -92,6 +92,20 @@ static y_userobj_t tuple_type = {
     NULL
 };
 
+void Y_is_tuple(int argc)
+{
+    if (argc != 1) y_error("is_tuple() takes exactly one argument");
+    int type = yarg_typeid(0);
+    int res;
+    if (type == Y_OPAQUE) {
+      const char* name = yget_obj(0, NULL);
+      res = (name != NULL && strcmp(name, tuple_type.type_name) == 0);
+    } else {
+      res = 0;
+    }
+    ypush_int(res);
+}
+
 void Y_tuple(int argc)
 {
     int i;
