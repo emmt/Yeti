@@ -160,7 +160,7 @@ static UnaryOp PrintH;
 static void FreeH(void* addr);  /* ******* Use Unref(hash) ******* */
 static void EvalH(Operand* op);
 
-Operations hashOps = {
+static Operations hashOps = {
   &FreeH, YOR_OPAQUE, 0, /* promoteID = */YOR_STRING/* means illegal */,
   "hash_table",
   {&PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX, &PromXX},
@@ -224,9 +224,9 @@ static void EvalH(Operand* op)
       h_error("non-function eval method");
     }
 
-    /* Permute the stack to prepend reference to eval method.  First, make sure the
-       stack is large enough.  Second, check that there are no pending signals
-       before this critical operation.  Finally permute the stack. */
+    /* Permute the stack to prepend reference to eval method.  First, make sure
+       the stack is large enough.  Second, check that there are no pending
+       signals before this critical operation.  Finally permute the stack. */
     long offset = owner - spBottom; /* stack may move */
     if (CheckStack(2)) {
       owner = spBottom + offset;
