@@ -34,6 +34,30 @@
 # define RefNC(db) (++(db)->references , (db))
 #endif
 
+/**
+ * @def YOR_UNSAFE_UNREF(db)
+ *
+ * Unreference data-block @ db assuming @a db is non-`NULL`.
+ */
+#define YOR_UNSAFE_UNREF(db) do {               \
+    DataBlock* __db = (db);                     \
+    if (--__db->references < 0) {               \
+      __db->ops->Free(__db);                    \
+    }                                           \
+  } while (0)
+
+/**
+ * @def YOR_UNREF(db)
+ *
+ * Unreference data-block @ db if non-`NULL`.
+ */
+#define YOR_UNREF(db) do {                              \
+    DataBlock* __db = (db);                             \
+    if (__db != NULL && --__db->references < 0) {        \
+      __db->ops->Free(__db);                            \
+    }                                                   \
+  } while (0)
+
 /*---------------------------------------------------------------------------*/
 /* USEFUL MACROS */
 
