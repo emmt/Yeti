@@ -100,7 +100,7 @@ static void apply_unary_math_func(int argc,
   sp->ops->FormOperand(sp, &op);
   int type = op.ops->typeID;
   if (type == YOR_FLOAT && func_f != NULL) {
-    func_d(build_result(&op, &floatStruct), op.value, op.type.number);
+    func_f(build_result(&op, &floatStruct), op.value, op.type.number);
     PopTo(sp - 2);
   } else if (type <= YOR_DOUBLE && func_d != NULL) {
     if (type < YOR_DOUBLE) {
