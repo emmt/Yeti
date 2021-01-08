@@ -1,6 +1,7 @@
+## 2021-01-08: Yeti version 6.5.0 released.
 * New `typemin` and `typemax` functions to get the minimum and maximum values
   for a numerical type.
-* New `product` function to compute the prodcut of the elements of an array.
+* New `product` function to compute the product of the elements of an array.
 * New `tuple` function to create lightweight tuple-like objects.
 * Change to more permissive MIT "expat" license.
 * Yeti can be compiled from anywhere (just run the `configure` script in the
@@ -17,6 +18,8 @@
   `$pkg` the name of the component).
 * Type `make install-doc` to build and install the documentation of the chosen
   components.
+* Fix bug in `arc` and `sinc` functions when called with a single precision
+  argument.
 
 ## 2018-03-09: Yeti version 6.4.1 released.
 * Add autostart file and logo.
