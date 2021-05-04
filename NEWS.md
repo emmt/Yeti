@@ -1,3 +1,6 @@
+## 2021-05-04: Yeti version 6.6.0 released.
+* Better looking trees in `h_show`, configurable with `h_show_style`.
+
 ## 2021-01-08: Yeti version 6.5.0 released.
 * New `typemin` and `typemax` functions to get the minimum and maximum values
   for a numerical type.
