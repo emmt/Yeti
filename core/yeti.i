@@ -987,6 +987,7 @@ func h_info(tab, align)
     info, h_get(tab, key);
   }
 }
+
 local __h_show_worker;
 func h_show(tab, prefix=, maxcnt=, depth=)
 /* DOCUMENT h_show, tab;
@@ -995,13 +996,15 @@ func h_show(tab, prefix=, maxcnt=, depth=)
      Keyword MAXCNT (default 5) can be used to specify the maximum number of
      elements for printing array values.
 
-   SEE ALSO: h_info, h_keys. */
+   SEE ALSO: h_show_style, h_info, h_keys. */
 {
   __h_show_maxcnt = (is_void(maxcnt) ? 5 : maxcnt);
   __h_show_worker, tab, , (is_void(prefix) ? "" : prefix), 0;
 }
+
 func __h_show_worker(obj, name, prefix, stage)
 {
+  local prefix1, prefix2;
   if (! name) {
     name = "<top>";
   } else if (strlen(name) == 0) {
@@ -1010,14 +1013,14 @@ func __h_show_worker(obj, name, prefix, stage)
     name = print(name)(sum);
   }
   if (stage == 1) {
-    prefix1 = prefix + " |-";
-    prefix2 = prefix + " | ";
+    prefix1 = prefix + __h_show_pfx_a;
+    prefix2 = prefix + __h_show_pfx_b;
   } else if (stage == 2) {
-    prefix1 = prefix + " `-";
-    prefix2 = prefix + "   ";
+    prefix1 = prefix + __h_show_pfx_c;
+    prefix2 = prefix + __h_show_pfx_d;
   } else {
-    prefix1 = prefix;
-    prefix2 = prefix;
+    eq_nocopy, prefix1, prefix;
+    eq_nocopy, prefix2, prefix;
   }
   if (is_hash(obj)) {
     key_list = h_keys(obj);
@@ -1057,6 +1060,49 @@ func __h_show_worker(obj, name, prefix, stage)
     write, format="%s %s (%s)\n", prefix1, name, typeof(obj);
   }
 }
+
+local __h_show_pfx_a, __h_show_pfx_b, __h_show_pfx_c, __h_show_pfx_d;
+func h_show_style(a, b, c, d)
+/* DOCUMENT h_show_style;
+         or h_show_style, "ascii"/"utf8";
+         or h_show_style, a, b, c, d;
+
+      Set the prefixes used by `h_show`.  Without any arguments, restore the
+      default (new "utf8" style).  Called with a single argument, apply the
+      corresponding style ("ascii" or "utf8"). Can be called with 4 arguments
+      to set the 4 prefixes according to your taste.
+
+   SEE ALSO: h_show.
+ */
+{
+  extern __h_show_pfx_a, __h_show_pfx_b, __h_show_pfx_c, __h_show_pfx_d;
+  if (is_void(b) && is_void(c) && is_void(d)) {
+    if (a == "ascii") {
+      a = " |-";
+      b = " | ";
+      c = " `-";
+      d = "   ";
+    } else if (is_void(a) || a == "utf8") {
+      a = " ├─";
+      b = " │ ";
+      c = " └─";
+      d = "   ";
+    } else {
+      error, "unknown style";
+    }
+  }
+  if (! is_scalar(a) || ! is_string(a) ||
+      ! is_scalar(b) || ! is_string(b) ||
+      ! is_scalar(c) || ! is_string(c) ||
+      ! is_scalar(d) || ! is_string(d)) {
+    error, "all prefixes must be scalar strings";
+  }
+  __h_show_pfx_a = a;
+  __h_show_pfx_b = b;
+  __h_show_pfx_c = c;
+  __h_show_pfx_d = d;
+}
+if (is_void(__h_show_pfx_a)) h_show_style;
 
 extern h_pop;
 /* DOCUMENT h_pop(tab, "key");
