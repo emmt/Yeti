@@ -1,3 +1,8 @@
+## 2022-02-02: Yeti version 6.6.1 released.
+* Remove functions `strtrimleft`, `strtrimright`, `strlower`, and `strupper`
+  which were in conflict with `utils.i` from [YLib
+  package](https://github.com/emmt/ylib).
+
 ## 2021-05-04: Yeti version 6.6.0 released.
 * Better looking trees in `h_show`, configurable with `h_show_style`.
 

@@ -1845,27 +1845,6 @@ extern smooth3;
    SEE ALSO: TDsolve. */
 
 /*---------------------------------------------------------------------------*/
-/* STRING ROUTINES */
-
-func strtrimleft(s)  {return strtrim(s, 1);}
-func strtrimright(s) {return strtrim(s, 2);}
-/* DOCUMENT strtrimleft(s);
-         or strtrimrigth(s);
-     Returns input (array of) string(s) S without leading or trailing
-     blanks.
-
-   SEE ALSO strlower, strupper, string, strtrim. */
-
-func strlower(s) { return strcase(0, s); }
-func strupper(s) { return strcase(1, s); }
-/* DOCUMENT strlower(s);
-         or strupper(s);
-     Returns input (array of) string(s) S converted to lower/upper case
-     letters.
-
-   SEE ALSO string, strcase, strtrimleft. */
-
-/*---------------------------------------------------------------------------*/
 /* MATH ROUTINES */
 
 extern sinc;
