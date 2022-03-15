@@ -3,22 +3,23 @@
 
 [[News](./NEWS.md)] [[License](./LICENSE.md)]
 
-Yeti is an extension of Yorick (a fast interpreted interactive data processing
-language written by David Munro) which implements (see "*Quick Reference*" below
-for a list of additional functions):
- * hash table objects
- * regular expressions
+Yeti is an extension of [Yorick](http://github.com/LLNL/yorick) (a fast
+interpreted interactive data processing language written by David Munro) which
+implements (see "*Quick Reference*" below for a list of additional functions):
+ * hash table objects;
+ * regular expressions;
  * complex, real-complex and complex-real FFT by FFTW (the Fastest Fourier
-   Transform in the West -- version 2)
- * wavelet filtering ("*à trou*" method)
- * fast convolution along a chosen dimension with various border conditions
- * more string functions
- * memory hacking routines
- * more math functions (sinc, round, arc)
- * generalized matrix-vector multiplication (with possibly sparse matrix)
- * routines to query/check Yorick's symbols
- * support for reading TIFF images
- * morpho-math operators
+   Transform in the West -- version 2);
+ * wavelet filtering (the "*à trou*" method)
+ * fast convolution along a chosen dimension with various border conditions;
+ * more string functions;
+ * memory hacking routines;
+ * more math functions (`sinc`, `round`, `arc`);
+ * generalized matrix-vector multiplication (with possibly sparse matrix);
+ * routines to query/check Yorick's symbols;
+ * support for reading TIFF images;
+ * morpho-math operators;
+ * tuples;
  * ...
 
 This distribution of Yeti may come with several extensions (depending
@@ -286,7 +287,7 @@ MIT "Expat" license. (See file [LICENSE](./LICENSE.md) for details.)
 
 ## References and notes
 
-1. [Yorick](http://github.com/dhmunro/yorick) is an interpreted programming
+1. [Yorick](http://github.com/LLNL/yorick) is an interpreted programming
    language for scientific simulations or calculations, postprocessing or
    steering large simulation codes, interactive scientific graphics, and
    reading, writing, or translating large files of numbers.
