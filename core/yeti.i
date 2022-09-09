@@ -8,7 +8,7 @@
  * This file is part of Yeti (https://github.com/emmt/Yeti) released under the
  * MIT "Expat" license.
  *
- * Copyright (C) 1996-2020: Éric Thiébaut.
+ * Copyright (C) 1996-2022: Éric Thiébaut.
  *
  *-----------------------------------------------------------------------------
  */
@@ -54,12 +54,7 @@ extern yeti_init;
    SEE ALSO: Y_LAUNCH, Y_HOME, Y_SITE, Y_VERSION,
              get_path, set_path.
  */
-if (batch()) {
-  yeti_init;
-} else {
-  write, format=" Yeti %s ready.  Copyright (c) 1996-2018, Eric THIEBAUT.\n",
-    yeti_init();
-}
+yeti_init;
 
 func setup_package(plugname)
 /* DOCUMENT PACKAGE_HOME = setup_package();
