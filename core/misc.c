@@ -40,10 +40,13 @@
 /* Built-in functions defined in this file: */
 extern BuiltIn Y_yeti_init;
 extern BuiltIn Y_mem_base, Y_mem_copy, Y_mem_peek;
+extern BuiltIn Y_fpe_handling;
+extern BuiltIn Y_machine_constant;
 extern BuiltIn Y_get_encoding;
 extern BuiltIn Y_nrefsof;
 extern BuiltIn Y_smooth3;
 extern BuiltIn Y_insure_temporary;
+extern BuiltIn Y_product;
 
 /*---------------------------------------------------------------------------*/
 /* INITIALIZATION OF YETI */
@@ -433,6 +436,16 @@ void Y_get_encoding(int argc)
     }
   }
   yor_error("unknown encoding name");
+}
+
+/*---------------------------------------------------------------------------*/
+/* HANDLING OF FLOATING-POINT EXCEPTIONS */
+
+void Y_fpe_handling(int argc)
+{
+  if (argc != 1) yor_error("fpe_handling: takes exactly one argument");
+  p_fpehandling(ygets_i(0));
+  ypush_nil();
 }
 
 /*---------------------------------------------------------------------------*/

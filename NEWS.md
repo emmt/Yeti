@@ -1,3 +1,7 @@
+## 2023-12-20: Yeti version 6.7.0 released.
+* New builtin function `fpe_handling` to turn on or off Yorick specific
+  handling of floating-point exceptions.
+
 ## 2022-02-02: Yeti version 6.6.1 released.
 * Remove functions `strtrimleft`, `strtrimright`, `strlower`, and `strupper`
   which were in conflict with `utils.i` from [YLib

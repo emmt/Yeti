@@ -141,8 +141,9 @@ func setup_package(plugname)
 func anonymous(args, code)
 /* DOCUMENT f = anonymous(args, code);
 
-     Make an anonymous function with ARGS its argument list and CODE the body
-     of the function.  ARGS and CODE must be (array of) strings.
+     Compile an anonymous function whose argument list and body are `args` and
+     `code` specified as (arrays of) strings. When the anonymous function is no
+     longer referenced, its definition is automatically deleted.
 
      For instance:
 
@@ -150,15 +151,14 @@ func anonymous(args, code)
        f2 = anonymous("x,y", "return cos(x*y + abs(x));");
 
      define two functions f1 and f2 which take respectively one and two
-     arguments.  When variables f1 and f2 get out of scope the function
-     definition is automatically deleted.
+     arguments.
 
      Other example:
 
        a = _lst(12,34,67);
        b = map(anonymous("x", "return sin(x);"), a);
 
-     B is a list with its elements the sines of the elements of A.
+     yields a list `b` with its elements the sines of the elements of `a`.
 
    SEE ALSO: map, include, funcdef, h_functor, closure.
  */
@@ -2146,6 +2146,14 @@ func same_encoding(a, b)
   diff(3, ..) = 0; /* ignore byte order for type char */
   return ! diff(max,);
 }
+
+extern fpe_handling;
+/* DOCUMENT fpe_handling, on;
+     Turn Yorick specific handling of floating-point exceptions on or off.
+     If `on` is `0`, handling of floating-point exceptions is turned off;
+     else if `on` is `1`, previous handling of floating-point exceptions
+     is restored; else handling of floating-point exceptions is turned on.
+ */
 
 local DBL_EPSILON, DBL_MIN, DBL_MAX;
 local FLT_EPSILON, FLT_MIN, FLT_MAX;
