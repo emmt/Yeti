@@ -1,3 +1,8 @@
+# User visible changes and bug fixes in Yeti
+
+## 2024-02-17: Yeti version 6.8.0 released.
+* New builtin function `empty_tuple` to yield an empty tuple.
+
 ## 2023-12-20: Yeti version 6.7.0 released.
 * New builtin function `fpe_handling` to turn on or off Yorick specific
   handling of floating-point exceptions.

@@ -245,3 +245,16 @@ void Y_tuple(int argc)
         }
     }
 }
+
+void Y_empty_tuple(int argc)
+{
+    if (argc != 1 || sp->ops != &dataBlockSym || sp->value.db != &nilDB) {
+        yor_error("usage: empty_tuple()");
+    }
+    size_t size = offsetof(Tuple, items);
+    Tuple* tup = p_malloc(size);
+    memset(tup, 0, size);
+    tup->ops = &tuple_type;
+    tup->numb = 0;
+    PushDataBlock(tup);
+}

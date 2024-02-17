@@ -431,27 +431,30 @@ extern value_of_symlink;
 /* TUPLE-LIKE OBJECTS */
 
 extern tuple;
+extern empty_tuple;
+extern is_tuple;
 /* DOCUMENT tup = tuple(arg1, arg2, ...);
-
-     Yields a lightweight tuple-like object collecting references to items
-     ARG1, ARG2, ...  A tuple instance can be indexed to retrieve the different
-     items:
-
-         tup(i) __________ yields i-th item using Yorick's conventions that
-                           i <= 0 refers to the end of the range;
-         tup() ___________ yields the number of items.
+         or tup = empty_tuple();
+         or is_tuple(obj);
 
      Tuples may be used to get around the limitation that Yorick functions can
      only return a single value.
 
-   SEE ALSO is_tuple, _lst.
-*/
+     `tuple(arg1, arg2, ...)` yields a lightweight tuple-like object collecting
+     `arg1`, `arg2`, ...
 
-extern is_tuple;
-/* DOCUMENT is_tuple(obj)
-     Yield whethet object OBJ is a tuple.
+     `empty_tuple()` yields a tuple with no entries. This circumvents the fact
+     that, due to Yorick's rules, `tuple()` yields a tuple with a single void
+     entry.
 
-   SEE ALSO tuple.
+     `is_tuple(obj)` yields whether object `obj` is a tuple.
+
+     A tuple, say `tup`, can be indexed to retrieve the different entries:
+
+         tup(i) // yields i-th entry using Yorick's indexing rules;
+         tup()  // yields the number of entries.
+
+   SEE ALSO _lst.
 */
 
 /*---------------------------------------------------------------------------*/
