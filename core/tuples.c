@@ -43,7 +43,7 @@ struct Item {
 struct Tuple {
   int  references;    /* reference counter */
   Operations* ops;    /* virtual function table */
-  long       numb;    /* number of objects in tuple */
+  long        len;    /* number of objects in tuple */
   Item      items[];  /* contents */
 };
 
@@ -76,7 +76,7 @@ static void
 free_tuple(void* addr)
 {
     Tuple* tuple = (Tuple*)addr;
-    for (long i = 0; i < tuple->numb; ++i) {
+    for (long i = 0; i < tuple->len; ++i) {
         Item* item = &tuple->items[i];
         if (item->type == OBJECT) {
             YOR_UNREF(item->value.db);
@@ -90,11 +90,11 @@ print_tuple(Operand* op)
 {
     char buf[32];
     Tuple* tuple = (Tuple*)op->value;
-    sprintf(buf, "%ld", tuple->numb);
+    sprintf(buf, "%ld", tuple->len);
     ForceNewline();
     PrintFunc("tuple (");
     PrintFunc(buf);
-    PrintFunc((tuple->numb > 1 ? " elements)" : " element)"));
+    PrintFunc((tuple->len > 1 ? " elements)" : " element)"));
     ForceNewline();
 }
 
@@ -153,9 +153,9 @@ eval_tuple(Operand *op)
     old = (sp->ops == &dataBlockSym) ? sp->value.db : NULL;
     if (flag == 1) {
         if (index <= 0) {
-            index += tuple->numb;
+            index += tuple->len;
         }
-        if (index < 1 || index > tuple->numb) {
+        if (index < 1 || index > tuple->len) {
             yor_error("out of range tuple index");
         }
         Item* item = &tuple->items[index - 1];
@@ -177,7 +177,7 @@ eval_tuple(Operand *op)
             sp->ops = &dataBlockSym;
         }
     } else {
-        sp->value.l = tuple->numb;
+        sp->value.l = tuple->len;
         sp->ops = &longScalar;
     }
     YOR_UNREF(old);
@@ -187,10 +187,10 @@ static void
 extract_tuple(Operand* op, char* name)
 {
     Tuple* tuple = op->value;
-    if (strcmp(name, "number") == 0) {
+    if (strcmp(name, "len") == 0) {
         /* Replace top of stack by value. */
         DataBlock* old = (sp->ops == &dataBlockSym) ? sp->value.db : NULL;
-        sp->value.l = tuple->numb;
+        sp->value.l = tuple->len;
         sp->ops = &longScalar;
         YOR_UNREF(old);
     } else {
@@ -215,7 +215,7 @@ void Y_tuple(int argc)
     Tuple* tup = p_malloc(size);
     memset(tup, 0, size);
     tup->ops = &tuple_type;
-    tup->numb = argc;
+    tup->len = argc;
     PushDataBlock(tup);
     for (int i = 0; i < argc; ++i) {
         Symbol* arg = (sp - argc) + i;
@@ -255,6 +255,6 @@ void Y_empty_tuple(int argc)
     Tuple* tup = p_malloc(size);
     memset(tup, 0, size);
     tup->ops = &tuple_type;
-    tup->numb = 0;
+    tup->len = 0;
     PushDataBlock(tup);
 }

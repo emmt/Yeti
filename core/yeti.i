@@ -469,8 +469,9 @@ extern is_tuple;
 
      A tuple, say `tup`, can be indexed to retrieve the different entries:
 
-         tup(i) // yields i-th entry using Yorick's indexing rules;
-         tup()  // yields the number of entries.
+         tup(i)  // yields i-th entry using Yorick's indexing rules;
+         tup()   // yields the number of entries.
+         tup.len // idem
 
    SEE ALSO _lst.
 */

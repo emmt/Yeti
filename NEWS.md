@@ -2,6 +2,7 @@
 
 ## 2024-02-17: Yeti version 6.8.0 released.
 * New builtin function `empty_tuple` to yield an empty tuple.
+* `tup.len` and `tup()` yield number of entries in tuple `tup`.
 * New kind of object `debug_nrefs` for debugging reference counting.
 
 ## 2023-12-20: Yeti version 6.7.0 released.
