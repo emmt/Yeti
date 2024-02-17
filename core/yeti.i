@@ -428,6 +428,24 @@ extern value_of_symlink;
  */
 
 /*---------------------------------------------------------------------------*/
+/* DEBUG REFERENCES */
+
+extern debug_refs;
+/* DOCUMENT dbg = debug_refs();
+
+     Yield an object which signals itself when eventually destroyed
+     and which can be queried for its current number of references and for a
+     unique mark.
+
+     This kind of object is useful for debugging reference counting.
+
+     `dbg.mark` yields the value of the mark of `dbg`.
+
+     `dbg.nrefs` yields the number of references of `dbg`.
+
+*/
+
+/*---------------------------------------------------------------------------*/
 /* TUPLE-LIKE OBJECTS */
 
 extern tuple;

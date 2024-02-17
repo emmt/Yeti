@@ -23,6 +23,7 @@ PKG_I=$(srcdir)/yeti.i
 OBJS = \
   convolve.o \
   cost.o \
+  debug.o \
   hash.o \
   math.o \
   misc.o \
@@ -105,7 +106,7 @@ install-doc: yeti.doc yhdf.doc
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
 
 convolve.o: $(srcdir)/yeti.h
-#cost.o:
+debug.o: $(srcdir)/yeti.h
 hash.o: $(srcdir)/yeti.h ../config.h
 misc.o: $(srcdir)/yeti.h ../config.h
 morph.o: $(srcdir)/yeti.h ../config.h

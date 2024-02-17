@@ -46,6 +46,16 @@ func test_tuples(nil)
     test_eval, "allof(tuple(\"a\",1,[2.0,3.0])(3) == [2.0,3.0])";
     test_eval, "allof(tuple(\"a\",1,[2.0,3.0])(0) == [2.0,3.0])";
     test_eval, "tuple(\"a\",1,[2.0,3.0])(-1) == 1";
+
+    dbg = debug_refs();
+    tup = tuple(dbg, dbg);
+    test_eval, "dbg.nrefs == 3";
+    dbg = [];
+    test_eval, "tup(1).nrefs == 2";
+    dbg = tup(2);
+    test_eval, "dbg.nrefs == 3";
+    tup = [];
+    test_eval, "dbg.nrefs == 1";
 }
 
 func test_types(nil)
