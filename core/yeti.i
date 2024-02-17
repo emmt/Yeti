@@ -545,20 +545,20 @@ extern h_debug;
 
 extern h_new;
 /* DOCUMENT h_new();
-         or h_new(key=value, ...);
-         or h_new("key", value, ...);
+         or h_new(key1=val1, key2=val2...);
+         or h_new("key1", val1, "key2", val2, ...);
 
-     Returns a new hash table with member(s) KEY set to VALUE.  There may be
-     any number of KEY-VALUE pairs. A particular member of a hash table TAB
-     can be specified as a scalar string, i.e.  "KEY", or using keyword
-     syntax, i.e. KEY=.  The keyword syntax is however only possible if KEY is
-     a valid Yorick's symbol name.  VALUE can be anything (even a non-array
-     object).
+     `h_new(...)` yields a new hash table with entries `key1` set to `val1`,
+     `key2` set to `val2`, ... There may be any number of key-value pairs. A
+     particular entry of a hash table can be specified as a scalar string, e.g.
+     `"key"`, or using keyword syntax, e.g. `key=...`. The keyword syntax is
+     however only possible if `key` is a valid Yorick's symbol name. Entry
+     value can be anything (even a non-array object).
 
-     h_save and h_functor (which to see) provide alternative means to create
-     hash table object.
+     `h_save` and `h_functor` (which to see) provide alternative means to
+     create hash table object.
 
-     yhd_save and yhd_restore (which to see) let you save and restore hash
+     `yhd_save` and `yhd_restore` (which to see) let you save and restore hash
      tables to data files.
 
      A hash table can be used to implement some kind of object-oriented
@@ -567,16 +567,16 @@ extern h_new;
      Yorick's memory manager -- beware).  You need to be careful not to do
      this as the error will not be detected.
 
-     The difference between a hash table and a list object is that items are
+     The difference between a hash table and a list object is that entries are
      retrieved by key identifier rather than by order (by h_get, get_member or
-     dot dereferenciation).  It is possible to dereference the contents of TAB
-     using the dot operator (as for a structure) or the get_member function.
-     For instance, it is legal to do:
+     dot dereferenciation). It is possible to dereference the contents of a
+     hash table using the dot operator (as for a structure) or by the `h_get`
+     function. For instance, it is legal to do:
 
         tab = h_new(x=span(-7,7,100), name="my name", op=sin, scale=33);
         plg, tab.op(tab.x), tab.x;
 
-     but the member must already exists and there are restrictions to
+     but the entry must already exists and there are restrictions to
      assignation, i.e. only contents of array members can be assigned:
 
         tab.name() = "some other string"; // ok
@@ -588,27 +588,29 @@ extern h_new;
 
      and assignation cannot therefore change the dimension list or data type
      of a hash table member.  Redefinition/creation of a member can always be
-     performed with the h_set function which is the recommended method to set
+     performed with the `h_set` function which is the recommended method to set
      the value of a hash table member.
 
      Hash tables behave differently depending how they are used:
 
-        tab.key      - de-reference hash member
-        tab("key")   - returns member named "key" in hash table TAB, this is
-                       exactly the same as: h_get(tab, "key")
-        tab()        - returns number of elements in hash table TAB
+        tab.key      - De-reference hash member.
+        tab("key")   - Yield entry named `"key"` in hash table `tab`, this is
+                       exactly the same as: `h_get(tab, "key")`.
+        tab()        - Yield number of entries in hash table `tab`.
 
-        tab(i)       - returns i-th member in hash table TAB; i is a scalar
+        tab(i)       - Yield `i`-th entry in hash table `tab`; `i` is a scalar
                        integer and can be less or equal zero to start from the
-                       last one; if the hash table is unmodified, tab(i) is
-                       the same as tab(keys(i)) where keys=h_keys(tab) --
-                       beware that this is very inefficient way to access the
+                       last one; if the hash table is unmodified, `tab(i)` is
+                       the same as `tab(keys(i))` where `keys = h_keys(tab)`.
+                       Beware that this is very inefficient way to access the
                        contents of a hash table and will probably be removed
-                       soon.
+                       soon. Use mixed vectors (see `mvect_build`) instead if
+                       you need to collect objects of any kind and access them
+                       by integer indices.
 
-     However, beware that the behaviour of calls such that TAB(...) may be
+     However, beware that the behaviour of calls such that `tab(...)` may be
      changed if the has table implements its own "evaluator" (see
-     h_evaluator).
+     `h_evaluator`).
 
      For instance, to explore the whole hash table, there are different
      possibilities:
