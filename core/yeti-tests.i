@@ -33,6 +33,21 @@ func test_quick_quartile(arg, verb=)
     }
 }
 
+func test_tuples(nil)
+{
+    test_eval, "tuple()() == 1";
+    test_eval, "empty_tuple()() == 0";
+    test_eval, "is_void(tuple()(1))";
+    test_eval, "is_tuple(empty_tuple())";
+    test_eval, "is_tuple(tuple())";
+    test_eval, "tuple(\"a\",1,[2.0,3.0])() == 3";
+    test_eval, "tuple(\"a\",1,[2.0,3.0])(1) == \"a\"";
+    test_eval, "tuple(\"a\",1,[2.0,3.0])(2) == 1";
+    test_eval, "allof(tuple(\"a\",1,[2.0,3.0])(3) == [2.0,3.0])";
+    test_eval, "allof(tuple(\"a\",1,[2.0,3.0])(0) == [2.0,3.0])";
+    test_eval, "tuple(\"a\",1,[2.0,3.0])(-1) == 1";
+}
+
 func test_types(nil)
 {
     test_eval, "is_integer(0)";
@@ -187,6 +202,7 @@ func test_types(nil)
 }
 
 if (batch()) {
+    test_tuples;
     test_types;
     test_quick_quartile;
     test_summary;
