@@ -44,7 +44,7 @@ struct Tuple {
   int  references;    /* reference counter */
   Operations* ops;    /* virtual function table */
   long       numb;    /* number of objects in tuple */
-  Item      items[1]; /* contents */
+  Item      items[];  /* contents */
 };
 
 extern PromoteOp PromXX;
