@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
 
 #define USE_OLD_API
 
@@ -210,7 +211,7 @@ void Y_is_tuple(int argc)
 
 void Y_tuple(int argc)
 {
-    long size = YOR_OFFSET_OF(Tuple, items) + argc*sizeof(Item);
+    size_t size = offsetof(Tuple, items) + argc*sizeof(Item);
     Tuple* tup = p_malloc(size);
     memset(tup, 0, size);
     tup->ops = &tuple_type;
