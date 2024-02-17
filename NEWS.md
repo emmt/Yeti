@@ -1,9 +1,12 @@
 # User visible changes and bug fixes in Yeti
 
 ## 2024-02-17: Yeti version 6.8.0 released.
+* New kind of objects *mixed vectors* (see `mvect_create`) to store anything in
+  a vector-like container that is indexed by integers and, unlike tuples, can
+  be resized and modified.
 * New builtin function `empty_tuple` to yield an empty tuple.
 * `tup.len` and `tup()` yield number of entries in tuple `tup`.
-* New kind of object `debug_nrefs` for debugging reference counting.
+* New kind of objects `debug_nrefs` for debugging reference counting.
 
 ## 2023-12-20: Yeti version 6.7.0 released.
 * New builtin function `fpe_handling` to turn on or off Yorick specific

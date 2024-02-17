@@ -211,9 +211,69 @@ func test_types(nil)
     }
 }
 
+func test_mixed_vectors(nil)
+{
+    v = mvect_create(0);
+    test_eval, "v.len == 0";
+    test_eval, "v() == 0";
+    test_eval, "is_mvect(v)";
+    for (i=1;i<=5;++i) {
+        mvect_push, v, i;
+    }
+    test_eval, "v.len == 5";
+    for (i=v.len+1; i <= 64; ++i) {
+        mvect_push, v, i;
+    }
+    test_eval, "v.len == 64";
+    a = array(long, v.len);
+    for (i=1; i<=v.len; ++i) {
+        a(i) = v(i);
+    }
+    test_eval, "allof(a == indgen(v.len))";
+    test_eval, "mvect_resize(v,37) == v";
+    test_eval, "v.len == 37";
+    a = array(long, v.len);
+    for (i=1; i<=v.len; ++i) {
+        a(i) = v(i);
+    }
+    test_eval, "allof(a == indgen(v.len))";
+    test_eval, "v(0) == a(0)";
+    test_eval, "v(-1) == a(-1)";
+    oldlen = v.len;
+    newlen = 71;
+    test_eval, "mvect_resize(v,newlen).len == newlen";
+    flag = 1n;
+    for (i=oldlen+1; i<=newlen; ++i) {
+        flag &= is_void(v(i));
+    }
+    test_eval, "flag == 1n";
+    dbg = debug_refs();
+    v = mvect_build(dbg, 1, dbg, 2);
+    test_eval, "dbg.nrefs == 3";
+    dbg = [];
+    test_eval, "v(1).nrefs == 2";
+    test_eval, "v(3).nrefs == 2";
+    dbg = v(1);
+    test_eval, "dbg.nrefs == 3";
+    v, 3, pi;
+    test_eval, "v(3) == pi";
+    test_eval, "dbg.nrefs == 2";
+    test_eval, "mvect_store(v, 4, dbg) == 2";
+    test_eval, "dbg.nrefs == 3";
+    test_eval, "mvect_push(v, dbg, dbg, dbg, dbg).len == 8";
+    test_eval, "dbg.nrefs == 7";
+    test_eval, "mvect_store(v, 1, pi) == dbg";
+    test_eval, "dbg.nrefs == 6";
+    test_eval, "mvect_resize(v, v.len - 2).len == 6";
+    test_eval, "dbg.nrefs == 4";
+    v = [];
+    test_eval, "dbg.nrefs == 1";
+}
+
 if (batch()) {
     test_tuples;
     test_types;
+    test_mixed_vectors;
     test_quick_quartile;
     test_summary;
 }

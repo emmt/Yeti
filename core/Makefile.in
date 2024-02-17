@@ -28,6 +28,7 @@ OBJS = \
   math.o \
   misc.o \
   morph.o \
+  mvect.o \
   newapi.o \
   regul.o \
   sort.o \

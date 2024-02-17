@@ -473,7 +473,63 @@ extern is_tuple;
          tup()   // yields the number of entries.
          tup.len // idem
 
-   SEE ALSO _lst.
+   SEE ALSO mvect_create, _lst.
+*/
+
+/*---------------------------------------------------------------------------*/
+/* MIXED VECTORS */
+
+extern mvect_create;
+extern mvect_build;
+extern mvect_store;
+extern mvect_resize;
+extern mvect_push;
+extern is_mvect;
+/* DOCUMENT vec = mvect_create(len);
+         or vec = mvect_build(arg1, arg2, arg3, ...);
+         or old = mvect_store(vec, i, new);
+         or mvect_store, vec, i, obj;
+         or mvect_resize, vec, len;
+         or mvect_push, vec, arg1, arg2, arg3, ...;
+         or is_mvect(obj);
+
+      Management of mixed vectors which are vector-like objects but with
+      entries of any type (hence, "mixed").
+
+      `mvect_create(len)` yields a mixed vector with `len` entries (all
+      initially void).
+
+      `mvect_build(arg1, arg2, arg3, ...)` build a new mixed vector with
+      entries `arg1`, `arg2`, `arg3`, ... Note that, due to Yorick's rules,
+      `mvect_build()` does not yield an empty mixed vector but a mixed vector
+      with a single void entry. To create an empty mixed vector, do
+      `mvect_create(0)`.
+
+      `mvect_store(vec, i, new)` replaces `i`-th entry of mixed vector `vec` by
+      `new` and returns the entry previously stored there. Can be called as a
+      subroutine to directly discard the previously stored entry. Yorick's
+      indexing rules hold, that is `i = 0` corresponds to the last entry,
+      `i = -1` corresponds to the before last entry and so on.
+
+      `mvect_resize, vec, len;` resizes the mixed vector `vec` to store `len`
+      entries. New entries, if any, are initialized as void. When called as a
+      function, returns the mixed vector itself.
+
+      `mvect_push, vec, arg1, arg2, arg3, ...;` pushes entries `arg1`, `arg2`,
+      `arg3`, ... at the end of the mixed vector `vec` resizing it as needed.
+      When called as a function, returns the mixed vector itself.
+
+      `is_mvect(obj)` yields whether object `obj` is a mixed vector.
+
+      Usage:
+
+          obj = vec(i);      // yields i-th entry of mixed vector
+          old = vec(i, new); // shortcut for `mvect_store(vec, i, new)`
+          vec, i, obj;       // shortcut for `mvect_store, vec, i, obj;`
+          len = vec();       // yields the number of stored entries
+          len = vec.len;     // idem
+
+   SEE ALSO tuple.
 */
 
 /*---------------------------------------------------------------------------*/
