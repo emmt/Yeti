@@ -248,7 +248,7 @@ func test_mixed_vectors(nil)
     }
     test_eval, "flag == 1n";
     dbg = debug_refs();
-    v = mvect_build(dbg, 1, dbg, 2);
+    v = mvect_collect(dbg, 1, dbg, 2);
     test_eval, "dbg.nrefs == 3";
     dbg = [];
     test_eval, "v(1).nrefs == 2";

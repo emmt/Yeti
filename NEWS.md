@@ -1,5 +1,8 @@
 # User visible changes and bug fixes in Yeti
 
+## 2024-02-19: Yeti version 6.8.1 released.
+* `mvect_build` renamed `mvect_collect`.
+
 ## 2024-02-17: Yeti version 6.8.0 released.
 * New kind of objects *mixed vectors* (see `mvect_create`) to store anything in
   a vector-like container that is indexed by integers and, unlike tuples, can

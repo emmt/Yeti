@@ -480,13 +480,13 @@ extern is_tuple;
 /* MIXED VECTORS */
 
 extern mvect_create;
-extern mvect_build;
+extern mvect_collect;
 extern mvect_store;
 extern mvect_resize;
 extern mvect_push;
 extern is_mvect;
 /* DOCUMENT vec = mvect_create(len);
-         or vec = mvect_build(arg1, arg2, arg3, ...);
+         or vec = mvect_collect(arg1, arg2, arg3, ...);
          or old = mvect_store(vec, i, new);
          or mvect_store, vec, i, obj;
          or mvect_resize, vec, len;
@@ -499,9 +499,9 @@ extern is_mvect;
       `mvect_create(len)` yields a mixed vector with `len` entries (all
       initially void).
 
-      `mvect_build(arg1, arg2, arg3, ...)` build a new mixed vector with
+      `mvect_collect(arg1, arg2, arg3, ...)` build a new mixed vector with
       entries `arg1`, `arg2`, `arg3`, ... Note that, due to Yorick's rules,
-      `mvect_build()` does not yield an empty mixed vector but a mixed vector
+      `mvect_collect()` does not yield an empty mixed vector but a mixed vector
       with a single void entry. To create an empty mixed vector, do
       `mvect_create(0)`.
 
@@ -597,14 +597,13 @@ extern h_new;
         tab("key")   - Yield entry named `"key"` in hash table `tab`, this is
                        exactly the same as: `h_get(tab, "key")`.
         tab()        - Yield number of entries in hash table `tab`.
-
         tab(i)       - Yield `i`-th entry in hash table `tab`; `i` is a scalar
                        integer and can be less or equal zero to start from the
                        last one; if the hash table is unmodified, `tab(i)` is
                        the same as `tab(keys(i))` where `keys = h_keys(tab)`.
                        Beware that this is very inefficient way to access the
                        contents of a hash table and will probably be removed
-                       soon. Use mixed vectors (see `mvect_build`) instead if
+                       soon. Use mixed vectors (see `mvect_collect`) instead if
                        you need to collect objects of any kind and access them
                        by integer indices.
 

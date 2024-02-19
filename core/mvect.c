@@ -267,7 +267,7 @@ void Y_mvect_create(int argc)
     push_mvect(len);
 }
 
-void Y_mvect_build(int argc)
+void Y_mvect_collect(int argc)
 {
     mvect* vec = push_mvect(argc);
     // Stack index starts at `argc`, not `argc - 1`, because result has been
